@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: earthquake_db
+    environment:
+      POSTGRES_DB: earthquake_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5440:5432"
+    volumes:
+      - earthquake_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d earthquake_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+#  backend:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    container_name: earthquake_backend
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/earthquake_db
+#      SPRING_DATASOURCE_USERNAME: admin
+#      SPRING_DATASOURCE_PASSWORD: admin
+#    ports:
+#      - "8090:8080"
+#
+#  frontend:
+#    build:
+#      context: ../../frontend/earthquake_frontend
+#      dockerfile: Dockerfile
+#      args:
+#        VITE_API_BASE_URL: ""
+#    container_name: earthquake_frontend
+#    depends_on:
+#      - backend
+#    ports:
+#      - "5173:80"
+
+volumes:
+  earthquake_data:

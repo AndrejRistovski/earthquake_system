@@ -1,0 +1,97 @@
+.bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    flex-wrap: wrap;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.input {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 180px;
+}
+
+.input:focus {
+    border-color: var(--accent);
+}
+
+.input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.applyBtn,
+.resetBtn {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 0.5rem 1.25rem;
+    border-radius: 2px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.applyBtn {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+}
+
+.applyBtn:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.resetBtn {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-muted);
+}
+
+.resetBtn:hover:not(:disabled) {
+    border-color: var(--text-muted);
+    color: var(--text-secondary);
+}
+
+.applyBtn:disabled,
+.resetBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

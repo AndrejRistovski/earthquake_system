@@ -1,5 +1,6 @@
 package mk.earthquake_backend.web.handler;
 
+import jakarta.validation.ConstraintViolationException;
 import mk.earthquake_backend.model.exceptions.UsgsApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -43,6 +45,19 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("errors/internal-server-error"));
         problem.setProperty("timestamp", Instant.now());
 
+        return problem;
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
+        String detail = ex.getConstraintViolations().stream()
+                .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
+                .collect(Collectors.joining(", "));
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setTitle("Validation Failed");
+        problem.setType(URI.create("errors/validation-failed"));
+        problem.setProperty("timestamp", Instant.now());
         return problem;
     }
 

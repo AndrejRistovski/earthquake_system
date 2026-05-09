@@ -1,3 +1,5 @@
+import type { MagnitudeCategory } from '../../util/magnitude';
+
 export interface Earthquake {
     id: number;
     usgsId: string;
@@ -11,7 +13,17 @@ export interface Earthquake {
     depth: number | null;
 }
 
-export interface FilterParams {
+export interface PageResponse<T> {
+    content: T[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+}
+
+export interface EarthquakeFilters {
     minMagnitude?: number;
-    after?: string;
+    categories?: MagnitudeCategory[];
+    from?: string;
+    to?: string;
 }

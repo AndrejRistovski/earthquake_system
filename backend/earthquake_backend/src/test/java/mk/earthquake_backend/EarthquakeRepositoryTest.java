@@ -7,6 +7,7 @@ import mk.earthquake_backend.repository.EarthquakeSpecifications;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -29,6 +30,9 @@ class EarthquakeRepositoryTest extends IntegrationTestBase {
 
     @Autowired
     private EarthquakeRepository earthquakeRepository;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     private final Instant BASE_TIME = Instant.parse("2026-01-01T12:00:00Z");
 
@@ -61,7 +65,8 @@ class EarthquakeRepositoryTest extends IntegrationTestBase {
 
     @Test
     void deleteByTimeBefore_removesOlderRecords() {
-        int deleted = earthquakeRepository.deleteByTimeBefore(BASE_TIME);
+        int deleted = transactionTemplate.execute(
+                status -> earthquakeRepository.deleteByTimeBefore(BASE_TIME));
 
         assertThat(deleted).isEqualTo(1);
         assertThat(earthquakeRepository.findAll()).hasSize(5);
@@ -99,7 +104,7 @@ class EarthquakeRepositoryTest extends IntegrationTestBase {
         List<Earthquake> result = earthquakeRepository.findAll(spec);
 
         assertThat(result).extracting(Earthquake::getUsgsId)
-                .containsExactlyInAnyOrder("usgs-medium-1", "usgs-medium-2");
+                .containsExactlyInAnyOrder("usgs-medium-1", "usgs-medium-2", "usgs-old");
     }
 
     @Test
@@ -151,6 +156,41 @@ class EarthquakeRepositoryTest extends IntegrationTestBase {
         assertThat(page.getContent()).hasSize(3);
         assertThat(page.getContent()).extracting(Earthquake::getUsgsId)
                 .containsExactly("usgs-small-1", "usgs-small-2", "usgs-medium-1");
+    }
+
+    @Test
+    void specs_inAnyCategory_smallIncludesZeroBoundary() {
+        // Magnitude 0.0 is the lower edge of SMALL [0, 4) — must be included
+        Earthquake zeroMag = buildEarthquake("usgs-zero-mag", 0.0, BASE_TIME.plusSeconds(600));
+        earthquakeRepository.save(zeroMag);
+
+        Specification<Earthquake> spec =
+                EarthquakeSpecifications.inAnyCategory(EnumSet.of(MagnitudeCategory.SMALL));
+
+        List<Earthquake> result = earthquakeRepository.findAll(spec);
+
+        assertThat(result).extracting(Earthquake::getUsgsId)
+                .contains("usgs-zero-mag");
+    }
+
+    @Test
+    void specs_inAnyCategory_largeIncludesSevenExactly() {
+        // Magnitude 7.0 exactly is in LARGE [7, ∞) and NOT in MEDIUM [4, 7)
+        Earthquake sevenMag = buildEarthquake("usgs-seven-mag", 7.0, BASE_TIME.plusSeconds(700));
+        earthquakeRepository.save(sevenMag);
+
+        Specification<Earthquake> specLarge =
+                EarthquakeSpecifications.inAnyCategory(EnumSet.of(MagnitudeCategory.LARGE));
+        Specification<Earthquake> specMedium =
+                EarthquakeSpecifications.inAnyCategory(EnumSet.of(MagnitudeCategory.MEDIUM));
+
+        List<Earthquake> inLarge = earthquakeRepository.findAll(specLarge);
+        List<Earthquake> inMedium = earthquakeRepository.findAll(specMedium);
+
+        assertThat(inLarge).extracting(Earthquake::getUsgsId)
+                .contains("usgs-seven-mag");
+        assertThat(inMedium).extracting(Earthquake::getUsgsId)
+                .doesNotContain("usgs-seven-mag");
     }
 
     private Earthquake buildEarthquake(String usgsId, double magnitude, Instant time) {

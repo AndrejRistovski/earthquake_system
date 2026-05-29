@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
 
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_GATEWAY,
-                ex.getMessage()
+                "Upstream USGS feed is currently unavailable. Please retry shortly."
         );
         problem.setTitle("USGS API Unavailable");
         problem.setType(URI.create("errors/usgs-api-unavailable"));
@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
 
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
-                "Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'"
+                "Invalid value for parameter '" + ex.getName() + "'"
         );
         problem.setTitle("Invalid Query Parameter");
         problem.setType(URI.create("errors/invalid-query-parameter"));

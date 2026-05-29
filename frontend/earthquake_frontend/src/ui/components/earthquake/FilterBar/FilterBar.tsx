@@ -5,16 +5,13 @@ import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import type { EarthquakeFilters } from '../../../../api/types/earthquake';
+import type { EarthquakeFilters } from '../../../../api/types/earthquake.ts';
 import {
     MAGNITUDE_CATEGORIES,
     MAGNITUDE_CATEGORY_ORDER,
     type MagnitudeCategory,
-} from '../../../../util/magnitude';
-
-export type TimePreset = '24h' | '7d' | '30d';
-
-export const TIME_PRESETS: TimePreset[] = ['24h', '7d', '30d'];
+} from '../../../../util/magnitude.ts';
+import { TIME_PRESETS, computePresetRange, type TimePreset } from './presets.ts';
 
 interface Props {
     filters: EarthquakeFilters;
@@ -22,15 +19,6 @@ interface Props {
     onChange: (next: { filters: EarthquakeFilters; activePreset: TimePreset }) => void;
     disabled: boolean;
 }
-
-export const computePresetRange = (preset: TimePreset): { from: string; to: string } => {
-    const to = new Date();
-    const from = new Date(to);
-    if (preset === '24h') from.setHours(from.getHours() - 24);
-    if (preset === '7d') from.setDate(from.getDate() - 7);
-    if (preset === '30d') from.setDate(from.getDate() - 30);
-    return { from: from.toISOString(), to: to.toISOString() };
-};
 
 const PRESET_LABEL: Record<TimePreset, string> = {
     '24h': 'Last 24h',

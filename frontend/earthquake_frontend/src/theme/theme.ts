@@ -122,5 +122,3 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
         },
     });
 };
-
-export default createAppTheme('dark');

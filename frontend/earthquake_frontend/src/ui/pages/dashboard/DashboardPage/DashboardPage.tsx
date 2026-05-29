@@ -1,21 +1,26 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { EarthquakeTable } from '../../../components/earthquake/EarthquakeTable/EarthquakeTable';
-import { EarthquakeMap } from '../../../components/earthquake/EarthquakeMap/EarthquakeMap.tsx';
-import {
-    FilterBar,
-    type TimePreset,
-    computePresetRange,
-} from '../../../components/earthquake/FilterBar/FilterBar';
-import { useEarthquakesPage } from '../../../../hooks/useEarthquakesPage';
-import { useAllEarthquakes } from '../../../../hooks/useAllEarthquakes';
-import type { EarthquakeFilters } from '../../../../api/types/earthquake';
+import { EarthquakeTable } from '../../../components/earthquake/EarthquakeTable/EarthquakeTable.tsx';
+import { FilterBar } from '../../../components/earthquake/FilterBar/FilterBar.tsx';
+import { computePresetRange, type TimePreset } from '../../../components/earthquake/FilterBar/presets.ts';
+import { useEarthquakesPage } from '../../../../hooks/useEarthquakesPage.ts';
+import { useAllEarthquakes } from '../../../../hooks/useAllEarthquakes.ts';
+import type { EarthquakeFilters } from '../../../../api/types/earthquake.ts';
+
+// Lazy-loaded so leaflet + react-leaflet (and the map's CSS) ship in their own
+// async chunk rather than the entry bundle — the map sits below the table fold.
+const EarthquakeMap = lazy(() =>
+    import('../../../components/earthquake/EarthquakeMap/EarthquakeMap.tsx').then((m) => ({
+        default: m.EarthquakeMap,
+    })),
+);
 
 const DEFAULT_PRESET: TimePreset = '24h';
 const DEFAULT_PAGE_SIZE = 20;
@@ -115,7 +120,15 @@ export const DashboardPage = () => {
                                 },
                             }}
                         />
-                        <EarthquakeMap earthquakes={mapEarthquakes} />
+                        <Suspense
+                            fallback={
+                                <Paper sx={{ height: 400, mt: 3, overflow: 'hidden' }}>
+                                    <Skeleton variant="rectangular" width="100%" height="100%" />
+                                </Paper>
+                            }
+                        >
+                            <EarthquakeMap earthquakes={mapEarthquakes} />
+                        </Suspense>
                     </>
                 )}
             </Box>

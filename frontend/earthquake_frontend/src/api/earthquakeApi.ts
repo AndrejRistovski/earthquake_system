@@ -1,5 +1,5 @@
-import axiosInstance from '../axios/axios';
-import type { Earthquake, EarthquakeFilters, PageResponse } from './types/earthquake';
+import axiosInstance from '../axios/axios.ts';
+import type { Earthquake, EarthquakeFilters, PageResponse } from './types/earthquake.ts';
 
 /**
  * Build the shared query params for both endpoints. Categories are serialised
@@ -23,20 +23,24 @@ export const getEarthquakesPage = async (
     filters: EarthquakeFilters,
     page: number,
     size: number,
+    signal?: AbortSignal,
 ): Promise<PageResponse<Earthquake>> => {
     const { data } = await axiosInstance.get<PageResponse<Earthquake>>('/api/earthquakes', {
         params: { ...buildParams(filters), page, size },
         paramsSerializer: repeatArraySerializer,
+        signal,
     });
     return data;
 };
 
 export const getAllEarthquakes = async (
     filters: EarthquakeFilters,
+    signal?: AbortSignal,
 ): Promise<Earthquake[]> => {
     const { data } = await axiosInstance.get<Earthquake[]>('/api/earthquakes/all', {
         params: buildParams(filters),
         paramsSerializer: repeatArraySerializer,
+        signal,
     });
     return data;
 };

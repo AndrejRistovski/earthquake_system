@@ -1,4 +1,4 @@
-import type { MagnitudeCategory } from '../../util/magnitude';
+import type { MagnitudeCategory } from '../../util/magnitude.ts';
 
 export interface Earthquake {
     id: number;

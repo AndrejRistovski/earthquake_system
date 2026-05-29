@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local env
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -29,3 +32,6 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Vitest coverage
+/coverage/

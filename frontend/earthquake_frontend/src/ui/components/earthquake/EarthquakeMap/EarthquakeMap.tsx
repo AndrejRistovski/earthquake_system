@@ -1,8 +1,9 @@
+import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
 import Paper from '@mui/material/Paper';
 import { useThemeMode } from '../../../../theme/themeModeContext.ts';
-import type { Earthquake } from '../../../../api/types/earthquake';
-import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude';
+import type { Earthquake } from '../../../../api/types/earthquake.ts';
+import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude.ts';
 
 interface Props {
     earthquakes: Earthquake[];

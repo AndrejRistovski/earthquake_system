@@ -5,19 +5,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Run the application
-mvn spring-boot:run
+# Run the application (auto-starts Postgres via spring-boot-docker-compose)
+./mvnw spring-boot:run        # macOS/Linux
+mvnw.cmd spring-boot:run      # Windows
 
 # Build (skip tests)
-mvn clean package -DskipTests
+./mvnw clean package -DskipTests
 
 # Run all tests
-mvn test
+./mvnw test
 
 # Run a specific test class
-mvn test -Dtest=EarthquakeServiceImplTest
+./mvnw test -Dtest=EarthquakeServiceImplTest
 
-# Start the PostgreSQL database (required before running the app)
+# Start Postgres manually (only needed when running the packaged jar;
+# `mvn spring-boot:run` boots it automatically via spring-boot-docker-compose)
 docker compose up -d
 
 # Build Docker image for the backend
@@ -35,8 +37,8 @@ This is a **Spring Boot 4.0.6 / Java 21** REST API that ingests earthquake data 
 - `web/controller/` — REST controllers (`/api/earthquakes`)
 - `web/handler/` — `@RestControllerAdvice` returning RFC 7807 `ProblemDetail`: `UsgsApiException` → 502, `ConstraintViolationException` and `MethodArgumentTypeMismatchException` → 400, fallthrough `Exception` → 500
 - `service/interfaces/` + `service/implementations/` — fetches from USGS, filters by magnitude (`>=` `app.usgs.min-magnitude`), and **upserts by `usgsId`** so revisions to existing events propagate without losing history
-- `jobs/` — two `@Scheduled` jobs:
-  - `EarthquakeIngestionScheduler` — calls `fetchAndStoreEarthquakes` on `${app.usgs.refresh-cron}` (default every 15 min)
+- `jobs/` — two schedulers:
+  - `EarthquakeIngestionScheduler` — `@EventListener(ApplicationReadyEvent.class)` performs startup priming immediately after context load, AND `@Scheduled(cron = "${app.usgs.refresh-cron}")` (default every 15 min) keeps the data fresh. Both paths call the same idempotent service method (upsert by `usgsId`).
   - `EarthquakeRetentionScheduler` — calls `deleteByTimeBefore(now - app.retention.days)` on `${app.retention.cron}` (default daily at 03:00)
   Both enabled by `@EnableScheduling` on the main class
 - `repository/` — Spring Data JPA. `EarthquakeRepository` extends `JpaSpecificationExecutor<Earthquake>` and exposes `findByUsgsId` (used for upsert) and `deleteByTimeBefore` (retention prune). Filter predicates live in `EarthquakeSpecifications` (time range, min magnitude, category union) and compose via `Specification.and()`.
@@ -46,11 +48,11 @@ This is a **Spring Boot 4.0.6 / Java 21** REST API that ingests earthquake data 
 - `model/dto/external/` — `UsgsResponseDto` and related records mapping the USGS GeoJSON response
 - `model/mapper/` — `EarthquakeMapper` for entity ↔ DTO conversions
 - `model/exceptions/` — `UsgsApiException` (runtime, wraps USGS API failures)
-- `config/` — `WebConfig` (CORS) and `RestTemplateConfig`
+- `config/` — `WebConfig` (CORS: `GET, POST` only on `/api/**`, origins from `app.cors.allowed-origins`) and `RestTemplateConfig` (5s connect, 10s read timeouts on the USGS client — failed fetches surface as `UsgsApiException` → HTTP 502)
 
-**Database**: PostgreSQL 16 on port `5440` (mapped from 5432). Schema managed by Flyway; migrations live in `src/main/resources/db/migration/`. `ddl-auto=validate` — never let Hibernate modify the schema.
+**Database**: PostgreSQL 16 on port `5440` (mapped from 5432). Schema managed by Flyway; migrations live in `src/main/resources/db/migration/` (currently just `V1__create_earthquakes.sql`). `ddl-auto=validate` — Hibernate will fail to start if the entity drifts from the schema, so every entity change requires a new `V{n}__*.sql` migration. PK is `BIGSERIAL`, `time` is `TIMESTAMPTZ`, `usgs_id` carries a unique constraint.
 
-**External API**: USGS GeoJSON feed configured via `app.usgs.url`, `app.usgs.min-magnitude`, and `app.usgs.refresh-cron`. Default feed is `all_month.geojson` so the DB can serve the longest UI preset (30 days) without re-querying USGS per request. Default min magnitude `0.5` (`>=`), refresh every 15 min.
+**External API**: USGS GeoJSON feed configured via `app.usgs.url`, `app.usgs.min-magnitude`, and `app.usgs.refresh-cron` (default every 15 min). The default feed is `all_month.geojson` so the DB can serve the longest UI preset (30 days) without re-querying USGS per request. Default min magnitude `0.5` (`>=`).
 
 **Retention**: `app.retention.days` (default 31) and `app.retention.cron` (daily 03:00) bound the table size. The retention job is decoupled from ingestion so a failure in one doesn't block the other.
 
@@ -62,6 +64,7 @@ This is a **Spring Boot 4.0.6 / Java 21** REST API that ingests earthquake data 
 - **Default query window.** Both query methods default to the last 24h when both `from` and `to` are null.
 - **Filter composition lives in `EarthquakeSpecifications`.** Each factory returns a no-op (`cb.conjunction()`) on null/empty input, so callers always `.and()` predicates without null-checking. Categories use `OR` across selected values (disjoint ranges like SMALL ∪ LARGE work correctly). The composite spec is shared between the paginated and unpaged endpoints.
 - **No manual refresh endpoint.** Ingestion runs purely on the scheduler; nothing in the API surface lets a client force a USGS fetch.
+- **Implementation class is `EarthquakeServiceImplementation`** (full word, no `Impl` suffix), but its test class is `EarthquakeServiceImplTest`. Keep this in mind when grepping or using `-Dtest=`.
 
 ## API Endpoints
 
@@ -73,12 +76,13 @@ This is a **Spring Boot 4.0.6 / Java 21** REST API that ingests earthquake data 
 ## Testing
 
 - **Controller tests**: `@WebMvcTest` with mocked service — `EarthquakeControllerTest`
+- **CORS tests**: `@WebMvcTest` + `@Import(WebConfig.class)` — `WebConfigCorsTest` (parameterized over allowed origins, asserts preflight succeeds with the `Access-Control-Allow-Origin` echo)
 - **Service integration tests**: extend `IntegrationTestBase` (shared static Postgres Testcontainer) — `EarthquakeServiceImplTest`
 - **Repository tests**: extend `IntegrationTestBase` — `EarthquakeRepositoryTest`
 - **Scheduler tests**: pure unit tests with Mockito — `EarthquakeIngestionSchedulerTest`
 - **Mapper tests**: pure unit tests — `EarthquakeMapperTest`
 
-Tests use **JUnit 5 + Mockito + AssertJ**. The shared Testcontainers Postgres is started once per JVM via the static `@Container` field on `IntegrationTestBase`, so multiple integration test classes don't each pay the container startup cost.
+Tests use **JUnit 5 + Mockito + AssertJ**. `IntegrationTestBase` uses the **singleton-container pattern**: a static `PostgreSQLContainer<>("postgres:16")` is started once and reused for the JVM lifetime (Testcontainers' Ryuk reaper cleans it up at exit), so multiple integration test classes don't each pay the container startup cost. Datasource properties are wired via `@DynamicPropertySource`.
 
 ## Key Configuration (`application.properties`)
 

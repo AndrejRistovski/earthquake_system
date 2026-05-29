@@ -1,20 +1,14 @@
 package mk.earthquake_backend.jobs;
 
+import mk.earthquake_backend.model.exceptions.UsgsApiException;
 import mk.earthquake_backend.service.interfaces.EarthquakeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/**
- * Performs the one-shot USGS ingestion at application startup.
- * <p>
- * The USGS feed configured in {@code app.usgs.url} returns the last 30 days of events,
- * so a single fetch on {@link ApplicationReadyEvent} is enough to populate the database;
- * all subsequent filtering ({@code 24h}, {@code 7d}, {@code 30d}, magnitude categories)
- * is served from the persisted data without further external calls.
- */
 @Component
 public class EarthquakeIngestionScheduler {
 
@@ -28,7 +22,21 @@ public class EarthquakeIngestionScheduler {
 
     @EventListener(ApplicationReadyEvent.class)
     public void refresh() {
-        int processed = earthquakeService.fetchAndStoreEarthquakes().size();
-        log.info("Startup ingestion completed: {} events processed", processed);
+        try {
+            int processed = earthquakeService.fetchAndStoreEarthquakes().size();
+            log.info("Startup ingestion completed: {} events processed", processed);
+        } catch (UsgsApiException ex) {
+            log.warn("Startup ingestion failed: {}", ex.getMessage());
+        }
+    }
+
+    @Scheduled(cron = "${app.usgs.refresh-cron}")
+    public void refreshScheduled() {
+        try {
+            int processed = earthquakeService.fetchAndStoreEarthquakes().size();
+            log.info("Scheduled ingestion completed: {} events processed", processed);
+        } catch (UsgsApiException ex) {
+            log.warn("Scheduled ingestion failed: {}", ex.getMessage());
+        }
     }
 }

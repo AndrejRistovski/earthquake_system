@@ -2,20 +2,64 @@ services:
   postgres:
     image: postgres:16
     container_name: earthquake_db
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: earthquake_db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: ${POSTGRES_DB:-earthquake_db}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
     ports:
-      - "5440:5432"
+      - "${POSTGRES_HOST_PORT:-5440}:5432"
     volumes:
       - earthquake_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_is_ready -U admin -d earthquake_db" ]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-admin} -d $${POSTGRES_DB:-earthquake_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: earthquake-backend:local
+    container_name: earthquake_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-earthquake_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174}
+      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+    ports:
+      - "${BACKEND_HOST_PORT:-9090}:9090"
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ../../frontend/earthquake_frontend
+      args:
+        # "" → bundle issues same-origin /api/* requests through the nginx proxy
+        #      (axios.ts uses ?? so the empty string is preserved, not defaulted).
+        VITE_API_BASE_URL: ""
+    image: earthquake-frontend:local
+    container_name: earthquake_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_HOST_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   earthquake_data:

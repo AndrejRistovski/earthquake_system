@@ -153,6 +153,142 @@ class EarthquakeServiceImplTest extends IntegrationTestBase {
     }
 
     @Test
+    void fetchAndStoreEarthquakes_nullFeatures_returnsEmptyList() {
+        // Stub: features == null — hits the early-return branch in fetchAndStoreEarthquakes
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(new UsgsResponseDto(null));
+
+        List<EarthquakeResponseDto> result = earthquakeService.fetchAndStoreEarthquakes();
+
+        assertThat(result).isEmpty();
+        assertThat(earthquakeRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void fetchAndStoreEarthquakes_emptyFeatures_returnsEmptyList() {
+        // Stub: features = [] — hits the early-return branch (isEmpty check)
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(new UsgsResponseDto(List.of()));
+
+        List<EarthquakeResponseDto> result = earthquakeService.fetchAndStoreEarthquakes();
+
+        assertThat(result).isEmpty();
+        assertThat(earthquakeRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void fetchAndStoreEarthquakes_nullResponseBody_throwsUsgsApiException() {
+        // Stub: getForObject returns null — hits the explicit null-check branch in fetchFromUsgs
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(null);
+
+        assertThatThrownBy(() -> earthquakeService.fetchAndStoreEarthquakes())
+                .isInstanceOf(UsgsApiException.class)
+                .hasMessageContaining("null");
+    }
+
+    @Test
+    void fetchAndStoreEarthquakes_upsertPreservesPrimaryKey() {
+        // First ingest — inserts the record and captures the generated PK
+        UsgsResponseDto firstResponse = new UsgsResponseDto(List.of(
+                new UsgsFeatureDto(
+                        "usgs-upsert-pk",
+                        new UsgsPropertiesDto(3.5, "ml", "Place", "M 3.5", Instant.now().minusSeconds(3600).toEpochMilli()),
+                        new UsgsGeometryDto(List.of(21.43, 42.00, 10.0))
+                )
+        ));
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(firstResponse);
+
+        earthquakeService.fetchAndStoreEarthquakes();
+
+        Long originalId = earthquakeRepository.findByUsgsId("usgs-upsert-pk")
+                .orElseThrow().getId();
+
+        // Second ingest — same usgsId, revised magnitude — must UPDATE not INSERT
+        UsgsResponseDto revisedResponse = new UsgsResponseDto(List.of(
+                new UsgsFeatureDto(
+                        "usgs-upsert-pk",
+                        new UsgsPropertiesDto(4.2, "ml", "Place", "M 4.2", Instant.now().minusSeconds(3600).toEpochMilli()),
+                        new UsgsGeometryDto(List.of(21.43, 42.00, 10.0))
+                )
+        ));
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(revisedResponse);
+
+        earthquakeService.fetchAndStoreEarthquakes();
+
+        mk.earthquake_backend.model.domain.Earthquake updated =
+                earthquakeRepository.findByUsgsId("usgs-upsert-pk").orElseThrow();
+
+        // Same PK proves it was an UPDATE, not a DELETE+INSERT
+        assertThat(updated.getId()).isEqualTo(originalId);
+        assertThat(updated.getMagnitude()).isEqualTo(4.2);
+        assertThat(earthquakeRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void getStoredEarthquakes_onlyFrom_filtersFromInclusive() {
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(buildUsgsResponse());
+        earthquakeService.fetchAndStoreEarthquakes();
+
+        // The test data uses Instant.now().minusSeconds(3600) as the event time.
+        // Pass from = 2 hours ago (events at 1h ago are AFTER from) and to = null.
+        Instant from = Instant.now().minusSeconds(7200);
+
+        Page<EarthquakeResponseDto> result = earthquakeService.getStoredEarthquakes(
+                null, null, from, null, defaultPageable());
+
+        // All 3 stored events are at ~1h ago, which is after the 2h-ago from cutoff
+        assertThat(result.getContent()).hasSize(3);
+    }
+
+    @Test
+    void getStoredEarthquakes_onlyTo_filtersToInclusive() {
+        when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
+                .thenReturn(buildUsgsResponse());
+        earthquakeService.fetchAndStoreEarthquakes();
+
+        // Pass to = 30 minutes ago; events at 1h ago are BEFORE to, so they ARE included
+        Instant to = Instant.now().minusSeconds(1800);
+
+        Page<EarthquakeResponseDto> result = earthquakeService.getStoredEarthquakes(
+                null, null, null, to, defaultPageable());
+
+        assertThat(result.getContent()).hasSize(3);
+    }
+
+    @Test
+    void getStoredEarthquakes_magnitudeZeroBoundary_includedInSmall() {
+        // Insert a mag=0.0 event directly (below the 0.5 ingestion threshold — saved manually)
+        mk.earthquake_backend.model.domain.Earthquake zeroMagEvent =
+                mk.earthquake_backend.model.domain.Earthquake.builder()
+                        .usgsId("usgs-zero-boundary")
+                        .magnitude(0.0)
+                        .magType("ml")
+                        .place("Zero boundary place")
+                        .title("M 0.0")
+                        .time(Instant.now().minusSeconds(3600))
+                        .latitude(42.0)
+                        .longitude(21.0)
+                        .depth(5.0)
+                        .build();
+        earthquakeRepository.save(zeroMagEvent);
+
+        Page<EarthquakeResponseDto> result = earthquakeService.getStoredEarthquakes(
+                null,
+                EnumSet.of(MagnitudeCategory.SMALL),
+                Instant.now().minusSeconds(7200),
+                Instant.now(),
+                defaultPageable());
+
+        assertThat(result.getContent())
+                .extracting(EarthquakeResponseDto::usgsId)
+                .contains("usgs-zero-boundary");
+    }
+
+    @Test
     void getAllStoredEarthquakes_sameFilters_returnsList() {
         when(restTemplate.getForObject(any(String.class), eq(UsgsResponseDto.class)))
                 .thenReturn(buildUsgsResponse());

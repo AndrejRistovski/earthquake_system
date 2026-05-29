@@ -12,6 +12,7 @@ frontend/earthquake_frontend/node_modules/
 frontend/earthquake_frontend/dist/
 frontend/earthquake_frontend/.env
 frontend/earthquake_frontend/.env.*
+!frontend/earthquake_frontend/.env.example
 frontend/earthquake_frontend/.cache/
 
 frontend/earthquake_frontend/npm-debug.log*

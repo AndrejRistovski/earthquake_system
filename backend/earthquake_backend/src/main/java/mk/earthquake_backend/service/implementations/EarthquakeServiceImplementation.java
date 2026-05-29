@@ -1,6 +1,6 @@
 package mk.earthquake_backend.service.implementations;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import mk.earthquake_backend.model.domain.Earthquake;
 import mk.earthquake_backend.model.enums.MagnitudeCategory;
 import mk.earthquake_backend.model.dto.external.UsgsResponseDto;
@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -25,8 +26,10 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class EarthquakeServiceImplementation implements EarthquakeService {
@@ -35,6 +38,7 @@ public class EarthquakeServiceImplementation implements EarthquakeService {
 
     private static final long DEFAULT_QUERY_HOURS_BACK = 24L;
     private static final Sort DEFAULT_ALL_SORT = Sort.by(Sort.Direction.DESC, "time");
+    private static final int MAX_ALL_RESULTS = 10_000;
 
     private final RestTemplate restTemplate;
     private final EarthquakeRepository earthquakeRepository;
@@ -71,14 +75,22 @@ public class EarthquakeServiceImplementation implements EarthquakeService {
                 .filter(e -> e.getMagnitude() != null && e.getMagnitude() >= minMagnitude)
                 .toList();
 
-        List<Earthquake> persisted = new ArrayList<>(incoming.size());
+        Set<String> incomingIds = incoming.stream()
+                .map(Earthquake::getUsgsId)
+                .collect(Collectors.toSet());
+
+        Map<String, Earthquake> existingByUsgsId = earthquakeRepository.findAllByUsgsIdIn(incomingIds)
+                .stream()
+                .collect(Collectors.toMap(Earthquake::getUsgsId, e -> e));
+
+        List<Earthquake> toSave = new ArrayList<>(incoming.size());
         int inserted = 0;
         int updated = 0;
         for (Earthquake fresh : incoming) {
-            Optional<Earthquake> existing = earthquakeRepository.findByUsgsId(fresh.getUsgsId());
-            if (existing.isPresent()) {
+            Earthquake existing = existingByUsgsId.get(fresh.getUsgsId());
+            if (existing != null) {
                 Earthquake merged = Earthquake.builder()
-                        .id(existing.get().getId())
+                        .id(existing.getId())
                         .usgsId(fresh.getUsgsId())
                         .magnitude(fresh.getMagnitude())
                         .magType(fresh.getMagType())
@@ -89,13 +101,16 @@ public class EarthquakeServiceImplementation implements EarthquakeService {
                         .longitude(fresh.getLongitude())
                         .depth(fresh.getDepth())
                         .build();
-                persisted.add(earthquakeRepository.save(merged));
+                toSave.add(merged);
                 updated++;
             } else {
-                persisted.add(earthquakeRepository.save(fresh));
+                toSave.add(fresh);
                 inserted++;
             }
         }
+
+        List<Earthquake> persisted = new ArrayList<>();
+        earthquakeRepository.saveAll(toSave).forEach(persisted::add);
 
         log.info("Ingestion complete: {} inserted, {} updated, {} considered", inserted, updated, incoming.size());
 
@@ -105,6 +120,7 @@ public class EarthquakeServiceImplementation implements EarthquakeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<EarthquakeResponseDto> getStoredEarthquakes(Double minMagnitudeArg,
                                                             Set<MagnitudeCategory> categories,
                                                             Instant from,
@@ -115,12 +131,14 @@ public class EarthquakeServiceImplementation implements EarthquakeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EarthquakeResponseDto> getAllStoredEarthquakes(Double minMagnitudeArg,
                                                                Set<MagnitudeCategory> categories,
                                                                Instant from,
                                                                Instant to) {
         Specification<Earthquake> spec = buildFilterSpec(minMagnitudeArg, categories, from, to);
-        return earthquakeRepository.findAll(spec, DEFAULT_ALL_SORT).stream()
+        return earthquakeRepository.findAll(spec, PageRequest.of(0, MAX_ALL_RESULTS, DEFAULT_ALL_SORT))
+                .getContent().stream()
                 .map(earthquakeMapper::toResponseDto)
                 .toList();
     }

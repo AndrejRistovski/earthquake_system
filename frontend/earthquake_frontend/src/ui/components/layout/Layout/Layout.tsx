@@ -19,14 +19,14 @@ export const Layout = () => {
                 <Toolbar sx={{gap: 1}}>
                     <Box sx={{display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1, minWidth: 0}}>
                         <Box
-                            sx={{
+                            sx={(theme) => ({
                                 width: 8,
                                 height: 8,
                                 borderRadius: '50%',
-                                bgcolor: '#6366f1',
-                                boxShadow: '0 0 12px #6366f1',
+                                bgcolor: 'primary.main',
+                                boxShadow: `0 0 12px ${theme.palette.primary.main}`,
                                 flexShrink: 0,
-                            }}
+                            })}
                         />
                         <Box sx={{minWidth: 0}}>
                             <Typography variant="h6" sx={{fontWeight: 700, letterSpacing: '0.12em'}}>

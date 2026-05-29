@@ -8,8 +8,8 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import type { Earthquake } from '../../../../api/types/earthquake';
-import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude';
+import type { Earthquake } from '../../../../api/types/earthquake.ts';
+import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude.ts';
 
 interface PaginationProps {
     count: number;

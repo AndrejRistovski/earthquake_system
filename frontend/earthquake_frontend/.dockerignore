@@ -1,0 +1,36 @@
+# deps & build output (multi-stage rebuilds these)
+node_modules
+dist
+dist-ssr
+*.local
+
+# vcs / ci / editor / agent
+.git
+.gitignore
+.github
+.idea
+*.iml
+.vscode
+.claude
+
+# test & coverage artifacts
+coverage
+playwright-report
+test-results
+blob-report
+
+# env files — bundle config comes from the build ARG, never a committed .env
+.env
+.env.*
+
+# misc
+*.log
+npm-debug.log*
+*.tsbuildinfo
+stats.html
+.DS_Store
+
+# not needed inside the image
+Dockerfile
+.dockerignore
+README.md

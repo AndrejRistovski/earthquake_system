@@ -2,6 +2,7 @@ package mk.earthquake_backend;
 
 import mk.earthquake_backend.jobs.EarthquakeIngestionScheduler;
 import mk.earthquake_backend.model.dto.response.EarthquakeResponseDto;
+import mk.earthquake_backend.model.exceptions.UsgsApiException;
 import mk.earthquake_backend.service.interfaces.EarthquakeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +47,31 @@ class EarthquakeIngestionSchedulerTest {
         scheduler.refresh();
 
         verify(earthquakeService).fetchAndStoreEarthquakes();
+    }
+
+    @Test
+    void refresh_serviceThrowsUsgsApi_isSwallowed() {
+        when(earthquakeService.fetchAndStoreEarthquakes()).thenThrow(new UsgsApiException("usgs unreachable"));
+
+        assertThatNoException().isThrownBy(scheduler::refresh);
+        verify(earthquakeService, times(1)).fetchAndStoreEarthquakes();
+    }
+
+    @Test
+    void refreshScheduled_callsFetchAndStore() {
+        when(earthquakeService.fetchAndStoreEarthquakes()).thenReturn(List.of());
+
+        scheduler.refreshScheduled();
+
+        verify(earthquakeService, times(1)).fetchAndStoreEarthquakes();
+    }
+
+    @Test
+    void refreshScheduled_serviceThrowsUsgsApi_isSwallowed() {
+        when(earthquakeService.fetchAndStoreEarthquakes()).thenThrow(new UsgsApiException("usgs unreachable"));
+
+        assertThatNoException().isThrownBy(scheduler::refreshScheduled);
+        verify(earthquakeService, times(1)).fetchAndStoreEarthquakes();
     }
 
     private EarthquakeResponseDto buildDto(String usgsId) {

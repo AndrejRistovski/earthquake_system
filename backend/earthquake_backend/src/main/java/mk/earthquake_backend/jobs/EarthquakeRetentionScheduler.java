@@ -1,6 +1,6 @@
 package mk.earthquake_backend.jobs;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import mk.earthquake_backend.repository.EarthquakeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

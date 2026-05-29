@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAllEarthquakes } from '../api/earthquakeApi';
-import type { Earthquake, EarthquakeFilters } from '../api/types/earthquake';
+import { getAllEarthquakes } from '../api/earthquakeApi.ts';
+import type { Earthquake, EarthquakeFilters } from '../api/types/earthquake.ts';
 
 export const allEarthquakesQueryKey = (filters: EarthquakeFilters) =>
     ['earthquakes', 'all', filters] as const;
@@ -13,6 +13,6 @@ export const allEarthquakesQueryKey = (filters: EarthquakeFilters) =>
 export const useAllEarthquakes = (filters: EarthquakeFilters) => {
     return useQuery<Earthquake[]>({
         queryKey: allEarthquakesQueryKey(filters),
-        queryFn: () => getAllEarthquakes(filters),
+        queryFn: ({ signal }) => getAllEarthquakes(filters, signal),
     });
 };

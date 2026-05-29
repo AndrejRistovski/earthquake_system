@@ -5,15 +5,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-/**
- * Shared base for integration tests that need a real Postgres.
- *
- * Uses the singleton-container pattern: the container is started once in a
- * static initializer and never stopped, so it lives for the JVM run and is
- * reused across all subclasses. Testcontainers' Ryuk reaper cleans it up
- * when the JVM exits. This avoids the per-class container startup cost we'd
- * pay if every test class declared its own {@code @Container} field.
- */
+
 @SpringBootTest
 public abstract class IntegrationTestBase {
 

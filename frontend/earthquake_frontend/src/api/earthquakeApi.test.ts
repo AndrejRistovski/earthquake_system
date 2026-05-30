@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axiosInstance from '../axios/axios.ts';
-import { getEarthquakesPage, getAllEarthquakes } from './earthquakeApi.ts';
+import axiosInstance from '../axios/axios';
+import { getEarthquakesPage, getAllEarthquakes } from './earthquakeApi';
 import type { Earthquake, PageResponse } from './types/earthquake.ts';
-import { makeEarthquake, makePageResponse, FIXTURE_EARTHQUAKES } from '../test/msw/factories.ts';
+import { makeEarthquake, makePageResponse, FIXTURE_EARTHQUAKES } from '../test/msw/factories';
 
 // Use axios-mock strategy (not MSW) for wrapper/param-shaping tests.
 // We test buildParams omission logic and repeat-serializer wiring by

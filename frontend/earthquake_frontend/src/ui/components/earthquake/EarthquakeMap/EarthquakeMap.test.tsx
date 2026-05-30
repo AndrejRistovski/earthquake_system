@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { ThemeModeProvider } from '../../../../theme/ThemeModeContext.tsx';
-import { EarthquakeMap } from './EarthquakeMap.tsx';
+import { ThemeModeProvider } from '../../../../theme/ThemeModeContext';
+import { EarthquakeMap } from './EarthquakeMap';
 import type { Earthquake } from '../../../../api/types/earthquake.ts';
 
 // Mock react-leaflet so layout code never runs under jsdom.

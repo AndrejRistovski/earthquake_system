@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
-import { ThemeModeProvider } from '../../../../theme/ThemeModeContext.tsx';
-import { EarthquakeTable } from './EarthquakeTable.tsx';
+import { ThemeModeProvider } from '../../../../theme/ThemeModeContext';
+import { EarthquakeTable } from './EarthquakeTable';
 import type { Earthquake } from '../../../../api/types/earthquake.ts';
-import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude.ts';
+import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude';
 
 const DEFAULT_PAGINATION = {
     count: 0,

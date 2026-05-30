@@ -6,16 +6,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
     useAllEarthquakes,
     allEarthquakesQueryKey,
-} from './useAllEarthquakes.ts';
+} from './useAllEarthquakes';
 import type { EarthquakeFilters } from '../api/types/earthquake.ts';
-import { makeEarthquake, FIXTURE_EARTHQUAKES } from '../test/msw/factories.ts';
+import { makeEarthquake, FIXTURE_EARTHQUAKES } from '../test/msw/factories';
 
 vi.mock('../api/earthquakeApi.ts', () => ({
     getEarthquakesPage: vi.fn(),
     getAllEarthquakes: vi.fn(),
 }));
 
-import { getAllEarthquakes } from '../api/earthquakeApi.ts';
+import { getAllEarthquakes } from '../api/earthquakeApi';
 
 const mockGetAllEarthquakes = vi.mocked(getAllEarthquakes);
 

@@ -1,121 +1,219 @@
 # Earthquake System
 
-A full-stack web application for visualising and managing earthquake data. The backend exposes a REST API built with Spring Boot (Java), and the frontend is a TypeScript single-page application that consumes it. The project follows a standard client/server monorepo structure with separate `backend/` and `frontend/` directories.
+A full-stack web application for browsing and visualising earthquake data. The backend periodically
+ingests events from the public [USGS earthquake feed](https://earthquake.usgs.gov/earthquakes/feed/v1.0/),
+stores them in PostgreSQL, and exposes a read-only REST API. The frontend is a React single-page
+application that lists the events and plots them on an interactive map.
+
+The repository is a client/server monorepo with separate `backend/` and `frontend/` directories, and
+ships with Dockerfiles and a Docker Compose stack for running everything in containers.
+
+> **Note:** the HTTP API is **read-only**. Earthquake records are not created through the API — they are
+> pulled from the USGS feed on a schedule (see [Scheduled jobs](#scheduled-jobs)). There are no
+> `POST`/`PUT`/`DELETE` endpoints.
 
 ---
 
 ## Tech Stack
 
-**Backend**
+**Backend** (`backend/earthquake_backend`)
 
-- Java (Spring Boot, Maven)
+| Concern        | Choice |
+|----------------|--------|
+| Language / runtime | Java 21 |
+| Framework      | Spring Boot 4.0.x (Web MVC, Data JPA, Validation) |
+| Database       | PostgreSQL 16 |
+| Migrations     | Flyway (`spring.jpa.hibernate.ddl-auto=validate` — schema owned by migrations, not Hibernate) |
+| API docs       | springdoc-openapi (Swagger UI) |
+| Build          | Maven (via the bundled `mvnw` wrapper) |
+| Tests          | JUnit 5 + Spring Boot Test + Testcontainers (PostgreSQL) |
+| Convenience    | Lombok, Spring Boot DevTools, Spring Boot Docker Compose support |
 
-**Frontend**
+**Frontend** (`frontend/earthquake_frontend`)
 
-- TypeScript
-- CSS (custom stylesheets, no CSS framework confirmed)
+| Concern        | Choice |
+|----------------|--------|
+| Language       | TypeScript |
+| Framework      | React 19 |
+| Build tool     | Vite 8 |
+| UI             | MUI (Material UI) v9 + Emotion |
+| Data fetching  | TanStack React Query 5 + axios |
+| Routing        | React Router 7 |
+| Maps           | Leaflet + react-leaflet |
+| Tests          | Vitest + Testing Library + MSW (unit), Playwright (e2e) |
+| Production serving | nginx (unprivileged) |
 
 ---
 
 ## Prerequisites
 
-- Java 17 or later
-- Maven 3.8 or later
-- Node.js 18 or later and a compatible package manager (npm, yarn, or pnpm)
-- An IDE such as IntelliJ IDEA or VS Code (both are configured in the project's `.gitignore`)
+For the containerised workflow you only need:
+
+- Docker and Docker Compose v2
+
+For running the apps directly on your host:
+
+- Java 21 (JDK)
+- Node.js >= 20.19 (the repo pins `20.19.0` via `.nvmrc`)
+- Docker (used to provide PostgreSQL; see below)
+- Maven is **not** required — use the bundled `./mvnw` wrapper
 
 ---
 
-## Installation and Setup
+## Running with Docker (recommended)
 
-### 1. Clone the repository
+The Compose file lives in `backend/earthquake_backend/docker-compose.yaml` and orchestrates three
+services: `postgres`, `backend`, and `frontend`. Both application services build from their respective
+multi-stage Dockerfiles.
 
-```bash
-git clone https://github.com/AndrejRistovski/earthquake_system.git
-cd earthquake_system
-```
-
-### 2. Configure the backend
-
-The backend reads sensitive configuration from a file that is excluded from version control. Create the file at:
-
-```
-backend/earthquake_backend/application-local.properties
-```
-
-Populate it with your local database credentials and any other environment-specific settings:
-
-```properties
-# Example — adjust to your environment
-spring.datasource.url=jdbc:postgresql://localhost:5432/earthquake_db
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-```
-
-If the project also uses `application-secret.properties`, place any secret keys (API keys, JWT secrets, etc.) there. Both files are listed in `.gitignore` and should never be committed.
-
-### 3. Configure the frontend
-
-The frontend uses environment variables loaded from a `.env` file (excluded from version control). Create:
-
-```
-frontend/earthquake_frontend/.env
-```
-
-At minimum you will need to point the frontend at the running backend:
-
-```env
-# Example — adjust port if the backend runs on a different port
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-### 4. Install frontend dependencies
+Because the database and the application services serve two different workflows, the app services are
+gated behind a Compose **profile**. This is the single most important thing to know about running the
+project:
 
 ```bash
-cd frontend/earthquake_frontend
-npm install      # or: yarn install / pnpm install
+cd backend/earthquake_backend
+
+# DB ONLY — starts just PostgreSQL (for local-on-host development, see next section).
+docker compose up -d
+
+# FULL STACK — starts PostgreSQL + backend + frontend, building images as needed.
+docker compose --profile app up --build
 ```
+
+A bare `docker compose up` deliberately starts **only** the database, because `backend` and `frontend`
+declare `profiles: ["app"]` while `postgres` does not. To bring up the whole application you must pass
+`--profile app`.
+
+Once the full stack is up:
+
+| Service   | URL                                   |
+|-----------|---------------------------------------|
+| Frontend  | http://localhost:8080                 |
+| Backend   | http://localhost:9090                 |
+| Swagger UI| http://localhost:9090/swagger-ui.html |
+| PostgreSQL| `localhost:5440` (container port 5432)|
+
+The frontend's nginx config proxies `/api/*` to the backend, so the browser bundle issues same-origin
+requests — no CORS configuration is needed in the container setup. The Vite `VITE_API_BASE_URL` is baked
+to `""` at build time for exactly this reason (it is a build-time value; Vite has no runtime override).
+
+### Configuration
+
+Every Compose variable has a sensible default, so the stack runs with no extra setup. To override
+credentials or ports, create a `.env` file next to the Compose file (`backend/earthquake_backend/.env`) —
+it is git-ignored and never baked into images:
+
+| Variable                  | Default | Purpose |
+|---------------------------|---------|---------|
+| `POSTGRES_DB`             | `earthquake_db` | Database name |
+| `POSTGRES_USER`           | `admin` | Database user |
+| `POSTGRES_PASSWORD`       | `admin` | Database password |
+| `POSTGRES_HOST_PORT`      | `5440`  | Host port mapped to Postgres 5432 |
+| `BACKEND_HOST_PORT`       | `9090`  | Host port for the backend |
+| `FRONTEND_HOST_PORT`      | `8080`  | Host port for the frontend (nginx) |
+| `APP_CORS_ALLOWED_ORIGINS`| `http://localhost:5173,http://localhost:5174` | Allowed origins (relevant only for host dev) |
+
+> The default `admin`/`admin` credentials are development defaults. Override them via `.env` for any
+> non-local use.
+
+Database data persists in the named volume `earthquake_data`. To wipe it, run
+`docker compose down -v`.
 
 ---
 
-## How to Run
+## Running on the host (development)
 
-### Backend (development)
+The intended dev loop runs the database in a container and the two apps natively, with hot reload.
+
+### Backend
 
 ```bash
 cd backend/earthquake_backend
 ./mvnw spring-boot:run
 ```
 
-The API will be available at `http://localhost:8080` by default.
+`application.properties` points the datasource at `localhost:5440`, which matches the Postgres port the
+Compose file exposes. With the Spring Boot Docker Compose integration on the classpath, `spring-boot:run`
+will **automatically start the `postgres` service** from `docker-compose.yaml` (and only that service,
+since the app services are behind the `app` profile). If you prefer to manage it yourself, run
+`docker compose up -d` first.
 
-### Frontend (development)
+The API is served at `http://localhost:9090`.
+
+### Frontend
 
 ```bash
 cd frontend/earthquake_frontend
-npm run dev      # or: yarn dev / pnpm dev
+cp .env.example .env     # sets VITE_API_BASE_URL=http://localhost:9090
+npm ci
+npm run dev
 ```
 
-The development server will be available at `http://localhost:5173` (Vite default) or the port configured in your environment.
+The Vite dev server runs at `http://localhost:5173`.
 
-### Production build
+---
+
+## Build & test
 
 **Backend:**
 
 ```bash
 cd backend/earthquake_backend
-./mvnw clean package -DskipTests
-java -jar target/*.jar
+./mvnw clean package        # runs tests (Testcontainers requires a running Docker daemon)
+./mvnw test                 # tests only
 ```
 
 **Frontend:**
 
 ```bash
 cd frontend/earthquake_frontend
-npm run build    # output written to dist/
+npm run build               # type-check (tsc -b) + vite build → dist/
+npm run test:unit           # Vitest
+npm run test:e2e            # Playwright (chromium)
+npm run lint                # ESLint
 ```
 
-Serve the `dist/` directory with any static file server or configure the Spring Boot app to serve it.
+---
+
+## API Reference
+
+Base path: `/api/earthquakes`. All endpoints are `GET` (read-only). Shared query parameters:
+
+| Parameter      | Type / format | Description |
+|----------------|---------------|-------------|
+| `minMagnitude` | number ≥ 0.0  | Minimum magnitude filter |
+| `categories`   | enum set: `SMALL` (0–4), `MEDIUM` (4–7), `LARGE` (≥7) | Filter by magnitude band; repeatable |
+| `from`         | ISO-8601 datetime | Lower time bound (inclusive) |
+| `to`           | ISO-8601 datetime | Upper time bound |
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/earthquakes` | Paginated list. Adds Spring `Pageable` params: `page`, `size` (default 20, max 200), `sort` (default `time,desc`). Returns a `PageResponse`. |
+| `GET`  | `/api/earthquakes/all` | Full (unpaginated) list matching the filters. |
+
+Interactive documentation is available via Swagger UI at `/swagger-ui.html` and the OpenAPI spec at
+`/v3/api-docs` (springdoc defaults).
+
+---
+
+## Scheduled jobs
+
+The backend runs two scheduled tasks (configurable in `application.properties`):
+
+| Job                | Default schedule | Property |
+|--------------------|------------------|----------|
+| USGS ingestion     | every 15 minutes (`0 */15 * * * *`) | `app.usgs.refresh-cron` |
+| Retention pruning  | daily at 03:00 (`0 0 3 * * *`); deletes events older than 31 days | `app.retention.cron`, `app.retention.days` |
+
+The feed URL and minimum ingest magnitude are configured via `app.usgs.url` and `app.usgs.min-magnitude`.
+
+---
+
+## Continuous Integration
+
+Continuous integration runs on **GitHub Actions** (`.github/workflows/ci.yml`): it builds and tests both
+the backend and the frontend on push. *(Publishing a tagged image to a container registry is being added
+separately.)*
 
 ---
 
@@ -123,66 +221,30 @@ Serve the `dist/` directory with any static file server or configure the Spring 
 
 ```
 earthquake_system/
+├── .github/workflows/ci.yml          # GitHub Actions CI pipeline
 ├── backend/
-│   └── earthquake_backend/         # Spring Boot application (Maven)
-│       ├── src/
-│       │   ├── main/
-│       │   │   ├── java/           # Application source (controllers, services, repositories, models)
-│       │   │   └── resources/      # application.properties and static resources
-│       │   └── test/               # Unit and integration tests
-│       └── pom.xml
+│   └── earthquake_backend/
+│       ├── Dockerfile                # multi-stage: temurin JDK build → JRE runtime
+│       ├── docker-compose.yaml       # postgres (+ app profile: backend, frontend)
+│       ├── .dockerignore
+│       ├── mvnw, pom.xml
+│       └── src/
+│           ├── main/java/mk/earthquake_backend/   # controllers, services, repositories, model
+│           └── main/resources/
+│               ├── application.properties
+│               └── db/migration/     # Flyway migrations (V1, V2, ...)
 ├── frontend/
-│   └── earthquake_frontend/        # TypeScript SPA
-│       ├── src/                    # Components, pages, API client, utilities
-│       ├── public/
-│       └── package.json
-└── .gitignore
+│   └── earthquake_frontend/
+│       ├── Dockerfile                # multi-stage: node build → nginx-unprivileged runtime
+│       ├── nginx.conf                # SPA serving + /api proxy to backend
+│       ├── .dockerignore, .env.example
+│       ├── package.json
+│       └── src/                      # components, pages, API client
+└── README.md
 ```
 
 ---
 
-## Key Features
+## Repository
 
-- Listing and browsing earthquake events with associated metadata (location, magnitude, depth, timestamp)
-- REST API backend providing structured access to earthquake data
-- Responsive frontend interface for visualising seismic events
-
----
-
-## API Reference
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/earthquakes` | Retrieve a list of earthquake events |
-| `GET` | `/api/earthquakes/{id}` | Retrieve a single earthquake event by ID |
-| `POST` | `/api/earthquakes` | Create a new earthquake record |
-| `PUT` | `/api/earthquakes/{id}` | Update an existing earthquake record |
-| `DELETE` | `/api/earthquakes/{id}` | Delete an earthquake record |
-
----
-
-## Configuration
-
-### Backend
-
-| File | Purpose |
-|------|---------|
-| `src/main/resources/application.properties` | Base configuration (datasource driver, JPA settings, server port) |
-| `application-local.properties` | Local overrides — **not committed** |
-| `application-secret.properties` | Secrets (API keys, credentials) — **not committed** |
-
-
-### Frontend
-
-| Variable | Purpose |
-|----------|---------|
-| `VITE_API_BASE_URL` | Base URL of the backend REST API |
-
----
-
-## Contributing
-
-1. Fork the repository and create a feature branch from `main`.
-2. Follow the existing code style and naming conventions.
-3. Keep commits focused; write a descriptive commit message.
-4. Open a pull request against `main` with a summary of the change.
+https://github.com/AndrejRistovski/earthquake_system

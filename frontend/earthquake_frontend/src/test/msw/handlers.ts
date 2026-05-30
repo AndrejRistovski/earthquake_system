@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { FIXTURE_EARTHQUAKES, FIXTURE_PAGE_RESPONSE } from './factories.ts';
+import { FIXTURE_EARTHQUAKES, FIXTURE_PAGE_RESPONSE } from './factories';
 import type { Earthquake, PageResponse } from '../../api/types/earthquake.ts';
 
 /**

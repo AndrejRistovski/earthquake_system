@@ -1,30 +1,30 @@
-import { test, expect, setupMockRoutes, waitForTable } from './fixtures.ts';
+import {test, expect, setupMockRoutes, waitForTable} from './fixtures';
 
 const VIEWPORTS = [
-    { name: 'xs (360px)', width: 360, height: 812 },
-    { name: 'sm (700px)', width: 700, height: 812 },
-    { name: 'md (1000px)', width: 1000, height: 812 },
+    {name: 'xs (360px)', width: 360, height: 812},
+    {name: 'sm (700px)', width: 700, height: 812},
+    {name: 'md (1000px)', width: 1000, height: 812},
 ];
 
 test.describe('Responsive layout — 360px viewport', () => {
-    test.use({ viewport: { width: 360, height: 812 } });
+    test.use({viewport: {width: 360, height: 812}});
 
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({page}) => {
         await setupMockRoutes(page);
         await page.goto('/');
         await waitForTable(page);
     });
 
-    test('no horizontal overflow at 360px', async ({ page }) => {
+    test('no horizontal overflow at 360px', async ({page}) => {
         const scrollWidth = await page.evaluate(() => document.body.scrollWidth);
         expect(scrollWidth).toBeLessThanOrEqual(360);
     });
 
-    test('page title is visible and not clipped', async ({ page }) => {
+    test('page title is visible and not clipped', async ({page}) => {
         await expect(page.getByText('SEISMIC MONITOR')).toBeVisible();
     });
 
-    test('Min Magnitude input spans the full width in xs layout', async ({ page }) => {
+    test('Min Magnitude input spans the full width in xs layout', async ({page}) => {
         const input = page.getByLabel('Min Magnitude');
         const box = await input.boundingBox();
         // At xs breakpoint MUI applies width: 100%; at sm+ it's fixed 200px.
@@ -32,7 +32,7 @@ test.describe('Responsive layout — 360px viewport', () => {
         expect(box?.width).toBeGreaterThan(250);
     });
 
-    test('table container allows horizontal scroll, not clipping', async ({ page }) => {
+    test('table container allows horizontal scroll, not clipping', async ({page}) => {
         const tableWrapper = page.locator('table').locator('..');
         const overflowX = await tableWrapper.evaluate(
             (el) => window.getComputedStyle(el).overflowX
@@ -44,9 +44,9 @@ test.describe('Responsive layout — 360px viewport', () => {
 // Parametrize FilterBar stack direction across breakpoints
 for (const vp of VIEWPORTS) {
     test.describe(`FilterBar layout — ${vp.name}`, () => {
-        test.use({ viewport: { width: vp.width, height: vp.height } });
+        test.use({viewport: {width: vp.width, height: vp.height}});
 
-        test(`FilterBar Stack direction is ${vp.width <= 360 ? 'column' : 'row'} at ${vp.name}`, async ({ page }) => {
+        test(`FilterBar Stack direction is ${vp.width <= 360 ? 'column' : 'row'} at ${vp.name}`, async ({page}) => {
             await setupMockRoutes(page);
             await page.goto('/');
             await waitForTable(page);

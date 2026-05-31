@@ -1,21 +1,21 @@
-import { createTheme, type Theme } from '@mui/material/styles';
+import {createTheme, type Theme} from '@mui/material/styles';
 
 export type ThemeMode = 'light' | 'dark';
 
 const darkPalette = {
-    background: { default: '#0a0e17', paper: '#0f1420' },
-    primary: { main: '#6366f1' },
+    background: {default: '#0a0e17', paper: '#0f1420'},
+    primary: {main: '#6366f1'},
     divider: '#1e2635',
-    text: { secondary: '#8b99b5' },
-    action: { hover: 'rgba(99, 102, 241, 0.04)' },
+    text: {secondary: '#8b99b5'},
+    action: {hover: 'rgba(99, 102, 241, 0.04)'},
 } as const;
 
 const lightPalette = {
-    background: { default: '#f7f8fb', paper: '#ffffff' },
-    primary: { main: '#6366f1' },
+    background: {default: '#f7f8fb', paper: '#ffffff'},
+    primary: {main: '#6366f1'},
     divider: '#e2e6ee',
-    text: { secondary: '#5b6478' },
-    action: { hover: 'rgba(99, 102, 241, 0.06)' },
+    text: {secondary: '#5b6478'},
+    action: {hover: 'rgba(99, 102, 241, 0.06)'},
 } as const;
 
 export const createAppTheme = (mode: ThemeMode): Theme => {
@@ -26,11 +26,11 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
             mode,
             ...palette,
         },
-        shape: { borderRadius: 12 },
+        shape: {borderRadius: 12},
         typography: {
-            h6: { fontWeight: 700 },
-            overline: { letterSpacing: '0.12em', textTransform: 'uppercase' },
-            caption: { letterSpacing: '0.05em' },
+            h6: {fontWeight: 700},
+            overline: {letterSpacing: '0.12em', textTransform: 'uppercase'},
+            caption: {letterSpacing: '0.05em'},
         },
         components: {
             MuiCssBaseline: {
@@ -44,7 +44,7 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
             },
             MuiPaper: {
                 styleOverrides: {
-                    root: ({ theme }) => ({
+                    root: ({theme}) => ({
                         backgroundImage: 'none',
                         border: `1px solid ${theme.palette.divider}`,
                         boxShadow:
@@ -81,7 +81,7 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
             },
             MuiTableCell: {
                 styleOverrides: {
-                    head: ({ theme }) => ({
+                    head: ({theme}) => ({
                         fontSize: '0.7rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
@@ -89,7 +89,7 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
                         fontWeight: 600,
                         borderBottom: `1px solid ${theme.palette.divider}`,
                     }),
-                    body: { borderBottom: 'none' },
+                    body: {borderBottom: 'none'},
                 },
             },
             MuiTableRow: {
@@ -106,7 +106,7 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
             },
             MuiAppBar: {
                 styleOverrides: {
-                    root: ({ theme }) => ({
+                    root: ({theme}) => ({
                         backgroundColor: 'transparent',
                         boxShadow: 'none',
                         borderBottom: `1px solid ${theme.palette.divider}`,
@@ -116,7 +116,7 @@ export const createAppTheme = (mode: ThemeMode): Theme => {
             },
             MuiOutlinedInput: {
                 styleOverrides: {
-                    root: { borderRadius: 8 },
+                    root: {borderRadius: 8},
                 },
             },
         },

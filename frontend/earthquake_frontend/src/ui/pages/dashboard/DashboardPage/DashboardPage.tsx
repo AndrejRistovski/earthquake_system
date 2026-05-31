@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import {lazy, Suspense, useState} from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -7,12 +7,12 @@ import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { EarthquakeTable } from '../../../components/earthquake/EarthquakeTable/EarthquakeTable.tsx';
-import { FilterBar } from '../../../components/earthquake/FilterBar/FilterBar.tsx';
-import { computePresetRange, type TimePreset } from '../../../components/earthquake/FilterBar/presets.ts';
-import { useEarthquakesPage } from '../../../../hooks/useEarthquakesPage.ts';
-import { useAllEarthquakes } from '../../../../hooks/useAllEarthquakes.ts';
-import type { EarthquakeFilters } from '../../../../api/types/earthquake.ts';
+import {EarthquakeTable} from '../../../components/earthquake/EarthquakeTable/EarthquakeTable.tsx';
+import {FilterBar} from '../../../components/earthquake/FilterBar/FilterBar.tsx';
+import {computePresetRange, type TimePreset} from '../../../components/earthquake/FilterBar/presets';
+import {useEarthquakesPage} from '../../../../hooks/useEarthquakesPage';
+import {useAllEarthquakes} from '../../../../hooks/useAllEarthquakes';
+import type {EarthquakeFilters} from '../../../../api/types/earthquake';
 
 // Lazy-loaded so leaflet + react-leaflet (and the map's CSS) ship in their own
 // async chunk rather than the entry bundle — the map sits below the table fold.
@@ -47,9 +47,9 @@ export const DashboardPage = () => {
     // one query fires per change instead of one with the stale page followed
     // by a corrected one.
     const handleFilterChange = ({
-        filters: nextFilters,
-        activePreset: nextPreset,
-    }: {
+                                    filters: nextFilters,
+                                    activePreset: nextPreset,
+                                }: {
         filters: EarthquakeFilters;
         activePreset: TimePreset;
     }) => {
@@ -70,19 +70,19 @@ export const DashboardPage = () => {
 
     return (
         <Stack spacing={0}>
-            <Paper sx={{ p: { xs: 2, sm: 2.5 }, mb: 3 }}>
+            <Paper sx={{p: {xs: 2, sm: 2.5}, mb: 3}}>
                 <Box>
                     <Typography variant="overline" color="text.secondary">
                         Events
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+                    <Typography variant="h4" sx={{fontWeight: 700, lineHeight: 1.1}}>
                         {totalEvents.toLocaleString()}
                     </Typography>
                 </Box>
             </Paper>
 
             {errorMessage && (
-                <Alert variant="filled" severity="error" sx={{ borderRadius: 2, mb: 2 }}>
+                <Alert variant="filled" severity="error" sx={{borderRadius: 2, mb: 2}}>
                     {errorMessage}
                 </Alert>
             )}
@@ -95,14 +95,14 @@ export const DashboardPage = () => {
             />
 
             {/* Slim progress strip at the top of the data area for background refetches. */}
-            <Box sx={{ height: 4, mb: 0.5 }}>
-                {isBackgroundFetching && !tableLoadingInitial && <LinearProgress />}
+            <Box sx={{height: 4, mb: 0.5}}>
+                {isBackgroundFetching && !tableLoadingInitial && <LinearProgress/>}
             </Box>
 
             <Box>
                 {tableLoadingInitial ? (
-                    <Paper sx={{ p: 6, display: 'flex', justifyContent: 'center' }}>
-                        <CircularProgress />
+                    <Paper sx={{p: 6, display: 'flex', justifyContent: 'center'}}>
+                        <CircularProgress/>
                     </Paper>
                 ) : (
                     <>
@@ -122,12 +122,12 @@ export const DashboardPage = () => {
                         />
                         <Suspense
                             fallback={
-                                <Paper sx={{ height: 400, mt: 3, overflow: 'hidden' }}>
-                                    <Skeleton variant="rectangular" width="100%" height="100%" />
+                                <Paper sx={{height: 400, mt: 3, overflow: 'hidden'}}>
+                                    <Skeleton variant="rectangular" width="100%" height="100%"/>
                                 </Paper>
                             }
                         >
-                            <EarthquakeMap earthquakes={mapEarthquakes} />
+                            <EarthquakeMap earthquakes={mapEarthquakes}/>
                         </Suspense>
                     </>
                 )}

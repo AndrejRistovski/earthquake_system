@@ -1,5 +1,5 @@
-import { test, expect } from './fixtures.ts';
-import type { MockPageResponse, MockEarthquake } from './fixtures.ts';
+import {test, expect} from './fixtures';
+import type {MockPageResponse, MockEarthquake} from './fixtures.ts';
 
 /**
  * Regression guard: rapid filter changes, last-response-wins.
@@ -48,7 +48,7 @@ const makePage = (content: MockEarthquake[]): MockPageResponse => ({
 
 const INITIAL_PAGE = makePage(INITIAL_DATA);
 
-test('table settles on the last toggle\'s dataset (last-response-wins)', async ({ page }) => {
+test('table settles on the last toggle\'s dataset (last-response-wins)', async ({page}) => {
     // Track how many TABLE requests have come in after initial load
     let postLoadRequestCount = 0;
     let initialLoaded = false;
@@ -58,7 +58,7 @@ test('table settles on the last toggle\'s dataset (last-response-wins)', async (
     await page.route('**/api/earthquakes**', async (route) => {
         if (!initialLoaded) {
             // Initial page load — respond immediately with initial data
-            await route.fulfill({ json: INITIAL_PAGE });
+            await route.fulfill({json: INITIAL_PAGE});
             return;
         }
 
@@ -84,41 +84,41 @@ test('table settles on the last toggle\'s dataset (last-response-wins)', async (
         if (delayMs > 0) {
             await new Promise<void>(r => setTimeout(r, delayMs));
         }
-        await route.fulfill({ json: makePage(dataset) });
+        await route.fulfill({json: makePage(dataset)});
     });
 
     // /all (map) — always returns empty; registered LAST for correct precedence
     await page.route('**/api/earthquakes/all**', async (route) => {
-        await route.fulfill({ json: [] });
+        await route.fulfill({json: []});
     });
 
     await page.goto('/');
     // Wait for initial table to appear
-    await page.waitForSelector('table', { timeout: 15_000 });
+    await page.waitForSelector('table', {timeout: 15_000});
 
     // Confirm initial data is visible
-    await expect(page.getByRole('cell', { name: 'Initial City' })).toBeVisible();
+    await expect(page.getByRole('cell', {name: 'Initial City'})).toBeVisible();
 
     // Mark initial load as done so subsequent requests use the inverted-delay logic
     initialLoaded = true;
 
     // Fire three rapid preset toggles: 7d → 30d → back to 24h
     // We do NOT await individual responses — we want them to overlap in flight
-    const presetGroup = page.getByRole('group', { name: 'Time range' });
-    await presetGroup.getByRole('button', { name: 'Last 7d' }).click();
-    await presetGroup.getByRole('button', { name: 'Last 30d' }).click();
-    await presetGroup.getByRole('button', { name: 'Last 24h' }).click();
+    const presetGroup = page.getByRole('group', {name: 'Time range'});
+    await presetGroup.getByRole('button', {name: 'Last 7d'}).click();
+    await presetGroup.getByRole('button', {name: 'Last 30d'}).click();
+    await presetGroup.getByRole('button', {name: 'Last 24h'}).click();
 
     // Wait for the table to settle on the last toggle's dataset (DATASET_3)
     await expect(
-        page.getByRole('cell', { name: 'City From Request 3' })
-    ).toBeVisible({ timeout: 10_000 });
+        page.getByRole('cell', {name: 'City From Request 3'})
+    ).toBeVisible({timeout: 10_000});
 
     // The earlier slower responses must NOT have clobbered the final result
     await expect(
-        page.getByRole('cell', { name: 'City From Request 1' })
+        page.getByRole('cell', {name: 'City From Request 1'})
     ).not.toBeVisible();
     await expect(
-        page.getByRole('cell', { name: 'City From Request 2' })
+        page.getByRole('cell', {name: 'City From Request 2'})
     ).not.toBeVisible();
 });

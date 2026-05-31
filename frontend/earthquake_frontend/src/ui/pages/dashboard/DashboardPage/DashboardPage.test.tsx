@@ -1,28 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
+import {describe, it, expect, vi} from 'vitest';
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import {render, screen, waitFor, act} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router';
-import { http, HttpResponse } from 'msw';
-import { server } from '../../../../test/msw/server.ts';
-import { ThemeModeProvider } from '../../../../theme/ThemeModeContext.tsx';
-import { DashboardPage } from './DashboardPage.tsx';
-import { FIXTURE_EARTHQUAKES, FIXTURE_PAGE_RESPONSE } from '../../../../test/msw/factories.ts';
-import type { Earthquake, PageResponse } from '../../../../api/types/earthquake.ts';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {MemoryRouter} from 'react-router';
+import {http, HttpResponse} from 'msw';
+import {server} from '../../../../test/msw/server';
+import {ThemeModeProvider} from '../../../../theme/ThemeModeContext';
+import {DashboardPage} from './DashboardPage';
+import {FIXTURE_EARTHQUAKES, FIXTURE_PAGE_RESPONSE} from '../../../../test/msw/factories';
+import type {Earthquake, PageResponse} from '../../../../api/types/earthquake.ts';
 
 // Mock react-leaflet so layout code never runs under jsdom
 vi.mock('react-leaflet', () => ({
-    MapContainer: ({ children }: { children?: React.ReactNode }) =>
-        React.createElement('div', { 'data-testid': 'map-container' }, children),
+    MapContainer: ({children}: { children?: React.ReactNode }) =>
+        React.createElement('div', {'data-testid': 'map-container'}, children),
     TileLayer: () => null,
-    Tooltip: ({ children }: { children?: React.ReactNode }) =>
-        React.createElement('span', { 'data-testid': 'tooltip' }, children),
+    Tooltip: ({children}: { children?: React.ReactNode }) =>
+        React.createElement('span', {'data-testid': 'tooltip'}, children),
     CircleMarker: ({
-        center,
-        pathOptions,
-        children,
-    }: {
+                       center,
+                       pathOptions,
+                       children,
+                   }: {
         center: [number, number];
         pathOptions: { color: string };
         children?: React.ReactNode;
@@ -40,7 +40,7 @@ vi.mock('react-leaflet', () => ({
 }));
 
 function makeWrapper(queryClient: QueryClient) {
-    return function Wrapper({ children }: { children: React.ReactNode }) {
+    return function Wrapper({children}: { children: React.ReactNode }) {
         return (
             <QueryClientProvider client={queryClient}>
                 <ThemeModeProvider>
@@ -71,22 +71,22 @@ async function renderDashboard() {
 
     render(
         <Wrapper>
-            <DashboardPage />
+            <DashboardPage/>
         </Wrapper>,
     );
 
     // Wait for the initial table to load
     await waitFor(
         () => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument(),
-        { timeout: 5000 },
+        {timeout: 5000},
     );
     // Wait for data to appear
     await waitFor(
         () => expect(screen.getByRole('table')).toBeInTheDocument(),
-        { timeout: 5000 },
+        {timeout: 5000},
     );
 
-    return { queryClient };
+    return {queryClient};
 }
 
 describe('DashboardPage — totalEvents KPI', () => {
@@ -119,7 +119,7 @@ describe('DashboardPage — error state', () => {
                         detail: 'An unexpected error occurred',
                         timestamp: new Date().toISOString(),
                     },
-                    { status: 500 },
+                    {status: 500},
                 ),
             ),
             http.get('*/api/earthquakes/all', () =>
@@ -131,7 +131,7 @@ describe('DashboardPage — error state', () => {
                         detail: 'An unexpected error occurred',
                         timestamp: new Date().toISOString(),
                     },
-                    { status: 500 },
+                    {status: 500},
                 ),
             ),
         );
@@ -141,14 +141,14 @@ describe('DashboardPage — error state', () => {
 
         render(
             <Wrapper>
-                <DashboardPage />
+                <DashboardPage/>
             </Wrapper>,
         );
 
         await waitFor(
             () =>
                 expect(screen.getByRole('alert')).toBeInTheDocument(),
-            { timeout: 10000 },
+            {timeout: 10000},
         );
 
         expect(screen.getByRole('alert')).toHaveTextContent(
@@ -161,7 +161,7 @@ describe('DashboardPage — filter change resets page', () => {
     it('toggling a category re-fetches and resets page to 0', async () => {
         let requestCount = 0;
         server.use(
-            http.get('*/api/earthquakes', ({ request }) => {
+            http.get('*/api/earthquakes', ({request}) => {
                 requestCount++;
                 const url = new URL(request.url);
                 const page = url.searchParams.get('page');
@@ -178,7 +178,7 @@ describe('DashboardPage — filter change resets page', () => {
 
         // Click the Large category button
         const user = userEvent.setup();
-        const catGroup = screen.getByRole('group', { name: 'Magnitude categories' });
+        const catGroup = screen.getByRole('group', {name: 'Magnitude categories'});
         await user.click(catGroup.querySelector('button:last-child')!);
 
         // Should trigger a new request
@@ -208,20 +208,20 @@ describe('DashboardPage — LinearProgress', () => {
 
         render(
             <Wrapper>
-                <DashboardPage />
+                <DashboardPage/>
             </Wrapper>,
         );
 
         // Wait for table to appear (page query resolved, /all still pending)
         await waitFor(
             () => expect(screen.getByRole('table')).toBeInTheDocument(),
-            { timeout: 5000 },
+            {timeout: 5000},
         );
 
         // LinearProgress should be visible (map query still in flight)
         await waitFor(
             () => expect(screen.getByRole('progressbar')).toBeVisible(),
-            { timeout: 2000 },
+            {timeout: 2000},
         );
 
         // Resolve /all
@@ -232,7 +232,7 @@ describe('DashboardPage — LinearProgress', () => {
         // LinearProgress should disappear
         await waitFor(
             () => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument(),
-            { timeout: 5000 },
+            {timeout: 5000},
         );
     });
 });

@@ -13,5 +13,5 @@ export const computePresetRange = (preset: TimePreset): { from: string; to: stri
     if (preset === '24h') from.setHours(from.getHours() - 24);
     if (preset === '7d') from.setDate(from.getDate() - 7);
     if (preset === '30d') from.setDate(from.getDate() - 30);
-    return { from: from.toISOString(), to: to.toISOString() };
+    return {from: from.toISOString(), to: to.toISOString()};
 };

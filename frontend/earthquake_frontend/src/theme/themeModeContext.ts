@@ -1,5 +1,5 @@
-import { createContext, useContext } from 'react';
-import type { ThemeMode } from './theme.ts';
+import {createContext, useContext} from 'react';
+import type {ThemeMode} from './theme';
 
 export interface ThemeModeContextValue {
     mode: ThemeMode;
@@ -8,7 +8,8 @@ export interface ThemeModeContextValue {
 
 export const ThemeModeContext = createContext<ThemeModeContextValue>({
     mode: 'dark',
-    toggle: () => {},
+    toggle: () => {
+    },
 });
 
 export const useThemeMode = (): ThemeModeContextValue => useContext(ThemeModeContext);

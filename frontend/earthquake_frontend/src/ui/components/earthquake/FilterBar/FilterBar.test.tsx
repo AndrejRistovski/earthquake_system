@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {describe, it, expect, vi, beforeEach} from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import {render, screen, fireEvent} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeModeProvider } from '../../../../theme/ThemeModeContext.tsx';
-import { FilterBar } from './FilterBar.tsx';
-import type { EarthquakeFilters } from '../../../../api/types/earthquake.ts';
-import type { TimePreset } from './presets.ts';
+import {ThemeModeProvider} from '../../../../theme/ThemeModeContext';
+import {FilterBar} from './FilterBar';
+import type {EarthquakeFilters} from '../../../../api/types/earthquake';
+import type {TimePreset} from './presets';
 
 interface RenderFilterBarOptions {
     filters?: EarthquakeFilters;
@@ -44,7 +44,7 @@ describe('FilterBar — minMagnitude input', () => {
 
     it('empty input + blur → onChange with minMagnitude undefined', async () => {
         const user = userEvent.setup();
-        renderFilterBar(onChange, { filters: { minMagnitude: 2.5 } });
+        renderFilterBar(onChange, {filters: {minMagnitude: 2.5}});
 
         const input = screen.getByLabelText('Min Magnitude');
         await user.clear(input);
@@ -85,7 +85,7 @@ describe('FilterBar — minMagnitude input', () => {
 
     it('no-op guard: same value on blur fires no onChange', async () => {
         const user = userEvent.setup();
-        renderFilterBar(onChange, { filters: { minMagnitude: 5 } });
+        renderFilterBar(onChange, {filters: {minMagnitude: 5}});
 
         const input = screen.getByLabelText('Min Magnitude');
         // input already shows "5"
@@ -102,7 +102,7 @@ describe('FilterBar — minMagnitude input', () => {
         // type into the raw DOM directly — userEvent on number input discards non-numeric
         // but jsdom yields '' for non-numeric in a number input.
         // We fire a change event with a non-numeric raw value to trigger the NaN guard.
-        fireEvent.change(input, { target: { value: 'abc' } });
+        fireEvent.change(input, {target: {value: 'abc'}});
         fireEvent.blur(input);
 
         // The raw value either becomes '' (jsdom discards non-numeric from type=number)
@@ -115,9 +115,9 @@ describe('FilterBar — preset toggle', () => {
     it('clicking Last 7d → onChange with activePreset "7d" and from/to populated', async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
-        renderFilterBar(onChange, { activePreset: '24h', filters: {} });
+        renderFilterBar(onChange, {activePreset: '24h', filters: {}});
 
-        await user.click(screen.getByRole('button', { name: 'Last 7d' }));
+        await user.click(screen.getByRole('button', {name: 'Last 7d'}));
 
         expect(onChange).toHaveBeenCalledOnce();
         const call = onChange.mock.calls[0]![0] as {
@@ -137,9 +137,9 @@ describe('FilterBar — category toggle', () => {
     it('select Large → onChange with categories: ["LARGE"]', async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
-        renderFilterBar(onChange, { filters: {} });
+        renderFilterBar(onChange, {filters: {}});
 
-        const catGroup = screen.getByRole('group', { name: 'Magnitude categories' });
+        const catGroup = screen.getByRole('group', {name: 'Magnitude categories'});
         await user.click(catGroup.querySelector('button:last-child')!);
 
         expect(onChange).toHaveBeenCalledOnce();
@@ -150,9 +150,9 @@ describe('FilterBar — category toggle', () => {
     it('deselect last category → categories: undefined', async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
-        renderFilterBar(onChange, { filters: { categories: ['LARGE'] } });
+        renderFilterBar(onChange, {filters: {categories: ['LARGE']}});
 
-        const catGroup = screen.getByRole('group', { name: 'Magnitude categories' });
+        const catGroup = screen.getByRole('group', {name: 'Magnitude categories'});
         await user.click(catGroup.querySelector('button:last-child')!);
 
         expect(onChange).toHaveBeenCalledOnce();
@@ -164,10 +164,10 @@ describe('FilterBar — category toggle', () => {
 describe('FilterBar — disabled prop', () => {
     it('all controls are disabled when disabled=true', () => {
         const onChange = vi.fn();
-        renderFilterBar(onChange, { disabled: true });
+        renderFilterBar(onChange, {disabled: true});
 
         // All buttons in the time range group are disabled
-        const timeGroup = screen.getByRole('group', { name: 'Time range' });
+        const timeGroup = screen.getByRole('group', {name: 'Time range'});
         const timeButtons = timeGroup.querySelectorAll('button');
         timeButtons.forEach((btn) => {
             expect(btn).toBeDisabled();
@@ -177,7 +177,7 @@ describe('FilterBar — disabled prop', () => {
         expect(screen.getByLabelText('Min Magnitude')).toBeDisabled();
 
         // All buttons in the categories group are disabled
-        const catGroup = screen.getByRole('group', { name: 'Magnitude categories' });
+        const catGroup = screen.getByRole('group', {name: 'Magnitude categories'});
         const catButtons = catGroup.querySelectorAll('button');
         catButtons.forEach((btn) => {
             expect(btn).toBeDisabled();
@@ -190,17 +190,17 @@ describe('FilterBar — render', () => {
         const onChange = vi.fn();
         renderFilterBar(onChange);
 
-        expect(screen.getByRole('button', { name: 'Last 24h' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Last 7d' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Last 30d' })).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Last 24h'})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Last 7d'})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Last 30d'})).toBeInTheDocument();
     });
 
     it('renders category buttons for Small, Medium, Large', () => {
         const onChange = vi.fn();
         renderFilterBar(onChange);
 
-        expect(screen.getByRole('button', { name: /Small/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Medium/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Large/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Small/i})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Medium/i})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Large/i})).toBeInTheDocument();
     });
 });

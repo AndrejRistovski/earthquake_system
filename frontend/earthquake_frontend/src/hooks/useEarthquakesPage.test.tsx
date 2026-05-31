@@ -1,21 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {describe, it, expect, vi, beforeEach} from 'vitest';
 import React from 'react';
-import type { ReactNode } from 'react';
-import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type {ReactNode} from 'react';
+import {renderHook, waitFor} from '@testing-library/react';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {
     useEarthquakesPage,
     earthquakePageQueryKey,
 } from './useEarthquakesPage';
-import type { EarthquakeFilters, PageResponse, Earthquake } from '../api/types/earthquake.ts';
-import { makeEarthquake, makePageResponse } from '../test/msw/factories';
+import type {EarthquakeFilters, PageResponse, Earthquake} from '../api/types/earthquake';
+import {makeEarthquake, makePageResponse} from '../test/msw/factories';
 
-vi.mock('../api/earthquakeApi.ts', () => ({
+vi.mock('../api/earthquakeApi', () => ({
     getEarthquakesPage: vi.fn(),
     getAllEarthquakes: vi.fn(),
 }));
 
-import { getEarthquakesPage } from '../api/earthquakeApi';
+import {getEarthquakesPage} from '../api/earthquakeApi';
 
 const mockGetEarthquakesPage = vi.mocked(getEarthquakesPage);
 
@@ -27,10 +27,10 @@ const makeWrapper = () => {
             },
         },
     });
-    const Wrapper = ({ children }: { children: ReactNode }) => (
+    const Wrapper = ({children}: { children: ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-    return { Wrapper, queryClient };
+    return {Wrapper, queryClient};
 };
 
 beforeEach(() => {
@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe('earthquakePageQueryKey', () => {
     it('returns [earthquakes, page, filters, page, size]', () => {
-        const filters: EarthquakeFilters = { minMagnitude: 2.5 };
+        const filters: EarthquakeFilters = {minMagnitude: 2.5};
         expect(earthquakePageQueryKey(filters, 0, 20)).toEqual([
             'earthquakes',
             'page',
@@ -50,7 +50,7 @@ describe('earthquakePageQueryKey', () => {
     });
 
     it('stable identity with frozen filters object', () => {
-        const filters: EarthquakeFilters = Object.freeze({ from: '2025-01-01T00:00:00.000Z' });
+        const filters: EarthquakeFilters = Object.freeze({from: '2025-01-01T00:00:00.000Z'});
         const key1 = earthquakePageQueryKey(filters, 1, 10);
         const key2 = earthquakePageQueryKey(filters, 1, 10);
         expect(key1).toEqual(key2);
@@ -63,10 +63,10 @@ describe('useEarthquakesPage', () => {
         const page: PageResponse<Earthquake> = makePageResponse(earthquakes);
         mockGetEarthquakesPage.mockResolvedValueOnce(page);
 
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(
+        const {Wrapper} = makeWrapper();
+        const {result} = renderHook(
             () => useEarthquakesPage({}, 0, 20),
-            { wrapper: Wrapper },
+            {wrapper: Wrapper},
         );
 
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -77,8 +77,8 @@ describe('useEarthquakesPage', () => {
         const page: PageResponse<Earthquake> = makePageResponse([makeEarthquake()]);
         mockGetEarthquakesPage.mockResolvedValueOnce(page);
 
-        const { Wrapper } = makeWrapper();
-        renderHook(() => useEarthquakesPage({}, 0, 20), { wrapper: Wrapper });
+        const {Wrapper} = makeWrapper();
+        renderHook(() => useEarthquakesPage({}, 0, 20), {wrapper: Wrapper});
 
         await waitFor(() => expect(mockGetEarthquakesPage).toHaveBeenCalledOnce());
 
@@ -88,8 +88,8 @@ describe('useEarthquakesPage', () => {
     });
 
     it('keepPreviousData: holds previous data while fetching page=1', async () => {
-        const page0 = makePageResponse([makeEarthquake({ id: 100, place: 'Page0City' })]);
-        const page1 = makePageResponse([makeEarthquake({ id: 200, place: 'Page1City' })]);
+        const page0 = makePageResponse([makeEarthquake({id: 100, place: 'Page0City'})]);
+        const page1 = makePageResponse([makeEarthquake({id: 200, place: 'Page1City'})]);
 
         // First call resolves immediately; second call is slow (controlled)
         let resolvePage1: (value: PageResponse<Earthquake>) => void;
@@ -101,10 +101,10 @@ describe('useEarthquakesPage', () => {
             .mockResolvedValueOnce(page0)
             .mockReturnValueOnce(page1Promise);
 
-        const { Wrapper } = makeWrapper();
-        const { result, rerender } = renderHook(
-            ({ p }: { p: number }) => useEarthquakesPage({}, p, 20),
-            { wrapper: Wrapper, initialProps: { p: 0 } },
+        const {Wrapper} = makeWrapper();
+        const {result, rerender} = renderHook(
+            ({p}: { p: number }) => useEarthquakesPage({}, p, 20),
+            {wrapper: Wrapper, initialProps: {p: 0}},
         );
 
         // Wait for page 0 to resolve
@@ -112,7 +112,7 @@ describe('useEarthquakesPage', () => {
         expect(result.current.data).toEqual(page0);
 
         // Switch to page 1 (slow)
-        rerender({ p: 1 });
+        rerender({p: 1});
 
         // keepPreviousData: previous data is still available while fetching
         await waitFor(() => expect(result.current.isFetching).toBe(true));
@@ -132,10 +132,10 @@ describe('useEarthquakesPage', () => {
         });
         mockGetEarthquakesPage.mockReturnValueOnce(slowPromise);
 
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(
+        const {Wrapper} = makeWrapper();
+        const {result} = renderHook(
             () => useEarthquakesPage({}, 0, 20),
-            { wrapper: Wrapper },
+            {wrapper: Wrapper},
         );
 
         expect(result.current.isLoading).toBe(true);

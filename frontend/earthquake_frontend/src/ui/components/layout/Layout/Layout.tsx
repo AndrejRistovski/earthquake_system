@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import {Outlet} from 'react-router';
-import {useThemeMode} from '../../../../theme/themeModeContext.ts';
+import {useThemeMode} from '../../../../theme/themeModeContext';
 
 export const Layout = () => {
     const {mode, toggle} = useThemeMode();

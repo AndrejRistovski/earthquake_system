@@ -1,6 +1,6 @@
-import { http, HttpResponse } from 'msw';
-import { FIXTURE_EARTHQUAKES, FIXTURE_PAGE_RESPONSE } from './factories';
-import type { Earthquake, PageResponse } from '../../api/types/earthquake.ts';
+import {http, HttpResponse} from 'msw';
+import {FIXTURE_EARTHQUAKES, FIXTURE_PAGE_RESPONSE} from './factories';
+import type {Earthquake, PageResponse} from '../../api/types/earthquake';
 
 /**
  * Default MSW handlers for DashboardPage integration tests.
@@ -11,7 +11,7 @@ import type { Earthquake, PageResponse } from '../../api/types/earthquake.ts';
  *  - from/to are valid ISO strings when present
  */
 export const handlers = [
-    http.get('*/api/earthquakes', ({ request }) => {
+    http.get('*/api/earthquakes', ({request}) => {
         const url = new URL(request.url);
 
         // Validate categories are repeat keys (not comma-separated)
@@ -22,10 +22,10 @@ export const handlers = [
         const from = url.searchParams.get('from');
         const to = url.searchParams.get('to');
         if (from && isNaN(Date.parse(from))) {
-            return new HttpResponse(null, { status: 400 });
+            return new HttpResponse(null, {status: 400});
         }
         if (to && isNaN(Date.parse(to))) {
-            return new HttpResponse(null, { status: 400 });
+            return new HttpResponse(null, {status: 400});
         }
 
         // Return a filtered subset if categories param is provided
@@ -48,15 +48,15 @@ export const handlers = [
         return HttpResponse.json(response);
     }),
 
-    http.get('*/api/earthquakes/all', ({ request }) => {
+    http.get('*/api/earthquakes/all', ({request}) => {
         const url = new URL(request.url);
         const from = url.searchParams.get('from');
         const to = url.searchParams.get('to');
         if (from && isNaN(Date.parse(from))) {
-            return new HttpResponse(null, { status: 400 });
+            return new HttpResponse(null, {status: 400});
         }
         if (to && isNaN(Date.parse(to))) {
-            return new HttpResponse(null, { status: 400 });
+            return new HttpResponse(null, {status: 400});
         }
         return HttpResponse.json(FIXTURE_EARTHQUAKES);
     }),

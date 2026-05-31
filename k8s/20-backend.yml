@@ -1,0 +1,113 @@
+# Spring Boot backend: stateless Deployment + ClusterIP Service.
+# Talks to Postgres over the headless Service DNS (earthquake-db).
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: earthquake-backend-config
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-backend
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: earthquake-system
+data:
+  # In-cluster DNS of the DB headless Service; DB name matches earthquake-db-config.
+  SPRING_DATASOURCE_URL: jdbc:postgresql://earthquake-db:5432/earthquake_db
+  # The image ships spring-boot-docker-compose on the classpath; disable it so the
+  # backend does NOT try to start its own compose-managed Postgres inside the pod.
+  SPRING_DOCKER_COMPOSE_ENABLED: "false"
+  # Browser hits the API same-origin through the Ingress, so CORS is never triggered;
+  # set to the Ingress host for completeness.
+  APP_CORS_ALLOWED_ORIGINS: http://earthquake.local
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: earthquake-backend
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-backend
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: earthquake-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: earthquake-backend
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: earthquake-backend
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: earthquake-system
+    spec:
+      # Block startup until Postgres accepts TCP, so Flyway/Hibernate don't crash-loop
+      # racing the DB on a cold cluster.
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z earthquake-db 5432; do echo waiting for db; sleep 2; done"]
+      containers:
+        - name: backend
+          image: earthquake-backend:local
+          imagePullPolicy: IfNotPresent      # use the k3d-imported image, never pull
+          ports:
+            - name: http
+              containerPort: 9090
+          envFrom:
+            - configMapRef:
+                name: earthquake-backend-config
+          # Datasource creds reuse the DB Secret — credentials defined in exactly one place.
+          env:
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: earthquake-db-credentials
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: earthquake-db-credentials
+                  key: POSTGRES_PASSWORD
+          # No actuator on the classpath, so probe the TCP port (server socket = app up).
+          # startupProbe gives the JVM + Flyway migrations time before liveness kicks in.
+          startupProbe:
+            tcpSocket:
+              port: 9090
+            periodSeconds: 5
+            failureThreshold: 30            # up to ~150s to boot
+          readinessProbe:
+            tcpSocket:
+              port: 9090
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 9090
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: earthquake-backend
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-backend
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: earthquake-system
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: earthquake-backend
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090

@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import {useState} from 'react';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import type { EarthquakeFilters } from '../../../../api/types/earthquake.ts';
+import type {EarthquakeFilters} from '../../../../api/types/earthquake';
 import {
     MAGNITUDE_CATEGORIES,
     MAGNITUDE_CATEGORY_ORDER,
     type MagnitudeCategory,
 } from '../../../../util/magnitude.ts';
-import { TIME_PRESETS, computePresetRange, type TimePreset } from './presets.ts';
+import {TIME_PRESETS, computePresetRange, type TimePreset} from './presets';
 
 interface Props {
     filters: EarthquakeFilters;
@@ -39,7 +39,7 @@ const formatActiveRange = (fromIso?: string, toIso?: string): string => {
     return `${fmt(fromIso)} → ${fmt(toIso)}`;
 };
 
-export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) => {
+export const FilterBar = ({filters, activePreset, onChange, disabled}: Props) => {
     // Min-magnitude is held locally as a string so the user can type freely
     // (including transient empties); we only emit on blur.
     const [minMagnitudeInput, setMinMagnitudeInput] = useState<string>(
@@ -52,7 +52,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
     ) => {
         if (next === null || next === activePreset) return;
         onChange({
-            filters: { ...filters, ...computePresetRange(next) },
+            filters: {...filters, ...computePresetRange(next)},
             activePreset: next,
         });
     };
@@ -62,7 +62,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
         next: MagnitudeCategory[],
     ) => {
         onChange({
-            filters: { ...filters, categories: next.length > 0 ? next : undefined },
+            filters: {...filters, categories: next.length > 0 ? next : undefined},
             activePreset,
         });
     };
@@ -74,7 +74,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
 
         if (next === filters.minMagnitude) return; // no-op
         onChange({
-            filters: { ...filters, minMagnitude: next },
+            filters: {...filters, minMagnitude: next},
             activePreset,
         });
     };
@@ -89,12 +89,12 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
             : null;
 
     return (
-        <Paper sx={{ p: { xs: 2, sm: 2.5 }, mb: 3 }}>
+        <Paper sx={{p: {xs: 2, sm: 2.5}, mb: 3}}>
             <Stack spacing={2}>
                 <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
+                    direction={{xs: 'column', sm: 'row'}}
                     spacing={2}
-                    sx={{ alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}
+                    sx={{alignItems: {xs: 'stretch', sm: 'center'}, flexWrap: 'wrap'}}
                 >
                     <ToggleButtonGroup
                         value={activePreset}
@@ -104,7 +104,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
                         size="small"
                         color="primary"
                         aria-label="Time range"
-                        sx={{ flexWrap: 'wrap' }}
+                        sx={{flexWrap: 'wrap'}}
                     >
                         {TIME_PRESETS.map((p) => (
                             <ToggleButton key={p} value={p}>
@@ -117,7 +117,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
                         label="Min Magnitude"
                         size="small"
                         type="number"
-                        slotProps={{ htmlInput: { step: 0.1, min: 0 } }}
+                        slotProps={{htmlInput: {step: 0.1, min: 0}}}
                         placeholder="e.g. 2.5"
                         value={minMagnitudeInput}
                         onChange={(e) => setMinMagnitudeInput(e.target.value)}
@@ -126,16 +126,16 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
                             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                         }}
                         disabled={disabled}
-                        sx={{ width: { xs: '100%', sm: 200 } }}
+                        sx={{width: {xs: '100%', sm: 200}}}
                     />
                 </Stack>
 
                 <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
+                    direction={{xs: 'column', sm: 'row'}}
                     spacing={2}
-                    sx={{ alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}
+                    sx={{alignItems: {xs: 'stretch', sm: 'center'}, flexWrap: 'wrap'}}
                 >
-                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 88 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{minWidth: 88}}>
                         Categories
                     </Typography>
                     <ToggleButtonGroup
@@ -144,7 +144,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
                         disabled={disabled}
                         size="small"
                         aria-label="Magnitude categories"
-                        sx={{ flexWrap: 'wrap' }}
+                        sx={{flexWrap: 'wrap'}}
                     >
                         {MAGNITUDE_CATEGORY_ORDER.map((cat) => {
                             const meta = MAGNITUDE_CATEGORIES[cat];
@@ -159,7 +159,7 @@ export const FilterBar = ({ filters, activePreset, onChange, disabled }: Props) 
                                             backgroundColor: `${meta.hex}33`, // ~20% alpha
                                             borderColor: meta.hex,
                                             color: meta.hex,
-                                            '&:hover': { backgroundColor: `${meta.hex}55` },
+                                            '&:hover': {backgroundColor: `${meta.hex}55`},
                                         },
                                     }}
                                 >

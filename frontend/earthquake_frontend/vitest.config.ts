@@ -1,8 +1,8 @@
-import { defineConfig } from 'vitest/config';
+import {defineConfig} from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-    plugins: [react({ jsxRuntime: 'automatic' })],
+    plugins: [react({jsxRuntime: 'automatic'})] as never,
     test: {
         environment: 'jsdom',
         globals: false,
@@ -18,7 +18,7 @@ export default defineConfig({
         ],
         coverage: {
             provider: 'v8',
-            reporters: ['text', 'html', 'lcov'],
+            reporter: ['text', 'html', 'lcov'],
             reportsDirectory: 'coverage',
             include: [
                 'src/util/**',

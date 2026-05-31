@@ -1,6 +1,6 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { getEarthquakesPage } from '../api/earthquakeApi.ts';
-import type { EarthquakeFilters, PageResponse, Earthquake } from '../api/types/earthquake.ts';
+import {useQuery, keepPreviousData} from '@tanstack/react-query';
+import {getEarthquakesPage} from '../api/earthquakeApi';
+import type {EarthquakeFilters, PageResponse, Earthquake} from '../api/types/earthquake';
 
 export const earthquakePageQueryKey = (
     filters: EarthquakeFilters,
@@ -20,7 +20,7 @@ export const useEarthquakesPage = (
 ) => {
     return useQuery<PageResponse<Earthquake>>({
         queryKey: earthquakePageQueryKey(filters, page, size),
-        queryFn: ({ signal }) => getEarthquakesPage(filters, page, size, signal),
+        queryFn: ({signal}) => getEarthquakesPage(filters, page, size, signal),
         placeholderData: keepPreviousData,
     });
 };

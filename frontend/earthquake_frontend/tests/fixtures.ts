@@ -1,6 +1,6 @@
-import { test as base, type Page } from '@playwright/test';
+import {test as base, type Page} from '@playwright/test';
 
-export { expect } from '@playwright/test';
+export {expect} from '@playwright/test';
 
 export interface MockEarthquake {
     id: number;
@@ -92,10 +92,10 @@ export async function setupMockRoutes(page: Page, options: SetupMockRoutesOption
                     body: JSON.stringify(problemDetail),
                 });
             } else {
-                await route.fulfill({ status, body: 'Internal Server Error' });
+                await route.fulfill({status, body: 'Internal Server Error'});
             }
         } else {
-            await route.fulfill({ json: pageResponse });
+            await route.fulfill({json: pageResponse});
         }
     });
 
@@ -109,16 +109,16 @@ export async function setupMockRoutes(page: Page, options: SetupMockRoutesOption
                     body: JSON.stringify(problemDetail),
                 });
             } else {
-                await route.fulfill({ status, body: 'Internal Server Error' });
+                await route.fulfill({status, body: 'Internal Server Error'});
             }
         } else {
-            await route.fulfill({ json: allResponse });
+            await route.fulfill({json: allResponse});
         }
     });
 }
 
 export async function waitForTable(page: Page) {
-    await page.waitForSelector('table', { timeout: 15_000 });
+    await page.waitForSelector('table', {timeout: 15_000});
 }
 
 export const test = base;

@@ -8,8 +8,8 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import type { Earthquake } from '../../../../api/types/earthquake.ts';
-import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude.ts';
+import type {Earthquake} from '../../../../api/types/earthquake';
+import {MAGNITUDE_CATEGORIES, getCategory} from '../../../../util/magnitude';
 
 interface PaginationProps {
     count: number;
@@ -57,13 +57,13 @@ const magnitudeChipColor = (
     return MAGNITUDE_CATEGORIES[cat].muiColor;
 };
 
-export const EarthquakeTable = ({ earthquakes, pagination, loading = false }: Props) => {
+export const EarthquakeTable = ({earthquakes, pagination, loading = false}: Props) => {
     const showEmptyState = !loading && pagination.count === 0;
 
     return (
-        <Paper sx={{ overflow: 'hidden' }}>
+        <Paper sx={{overflow: 'hidden'}}>
             {showEmptyState ? (
-                <EmptyState />
+                <EmptyState/>
             ) : (
                 <TableContainer>
                     <Table size="small">
@@ -86,14 +86,14 @@ export const EarthquakeTable = ({ earthquakes, pagination, loading = false }: Pr
                                                 label={eq.magnitude.toFixed(1)}
                                                 color={magnitudeChipColor(eq.magnitude)}
                                                 size="small"
-                                                sx={{ minWidth: 56 }}
+                                                sx={{minWidth: 56}}
                                             />
                                         ) : (
                                             <Chip
                                                 label="—"
                                                 variant="outlined"
                                                 size="small"
-                                                sx={{ minWidth: 56 }}
+                                                sx={{minWidth: 56}}
                                             />
                                         )}
                                     </TableCell>
@@ -127,7 +127,7 @@ export const EarthquakeTable = ({ earthquakes, pagination, loading = false }: Pr
 };
 
 const EmptyState = () => (
-    <Paper sx={{ textAlign: 'center', py: 8, px: 4, boxShadow: 'none' }}>
+    <Paper sx={{textAlign: 'center', py: 8, px: 4, boxShadow: 'none'}}>
         <Typography variant="h6" gutterBottom>
             No seismic events match the active filters
         </Typography>

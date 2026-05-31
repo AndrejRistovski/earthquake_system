@@ -1,9 +1,9 @@
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
+import {MapContainer, TileLayer, CircleMarker, Tooltip} from 'react-leaflet';
 import Paper from '@mui/material/Paper';
-import { useThemeMode } from '../../../../theme/themeModeContext.ts';
-import type { Earthquake } from '../../../../api/types/earthquake.ts';
-import { MAGNITUDE_CATEGORIES, getCategory } from '../../../../util/magnitude.ts';
+import {useThemeMode} from '../../../../theme/themeModeContext';
+import type {Earthquake} from '../../../../api/types/earthquake';
+import {MAGNITUDE_CATEGORIES, getCategory} from '../../../../util/magnitude';
 
 interface Props {
     earthquakes: Earthquake[];
@@ -28,12 +28,12 @@ const hasCoordinates = (
 ): eq is Earthquake & { latitude: number; longitude: number } =>
     eq.latitude !== null && eq.longitude !== null;
 
-export const EarthquakeMap = ({ earthquakes }: Props) => {
-    const { mode } = useThemeMode();
+export const EarthquakeMap = ({earthquakes}: Props) => {
+    const {mode} = useThemeMode();
     const plottable = earthquakes.filter(hasCoordinates);
 
     return (
-        <Paper sx={{ overflow: 'hidden', height: 400, mt: 3 }}>
+        <Paper sx={{overflow: 'hidden', height: 400, mt: 3}}>
             <MapContainer
                 center={[20, 0]}
                 zoom={2}

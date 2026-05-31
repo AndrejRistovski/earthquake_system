@@ -1,21 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {describe, it, expect, vi, beforeEach} from 'vitest';
 import React from 'react';
-import type { ReactNode } from 'react';
-import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type {ReactNode} from 'react';
+import {renderHook, waitFor} from '@testing-library/react';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {
     useAllEarthquakes,
     allEarthquakesQueryKey,
 } from './useAllEarthquakes';
-import type { EarthquakeFilters } from '../api/types/earthquake.ts';
-import { makeEarthquake, FIXTURE_EARTHQUAKES } from '../test/msw/factories';
+import type {EarthquakeFilters} from '../api/types/earthquake';
+import {makeEarthquake, FIXTURE_EARTHQUAKES} from '../test/msw/factories';
 
-vi.mock('../api/earthquakeApi.ts', () => ({
+vi.mock('../api/earthquakeApi', () => ({
     getEarthquakesPage: vi.fn(),
     getAllEarthquakes: vi.fn(),
 }));
 
-import { getAllEarthquakes } from '../api/earthquakeApi';
+import {getAllEarthquakes} from '../api/earthquakeApi';
 
 const mockGetAllEarthquakes = vi.mocked(getAllEarthquakes);
 
@@ -27,10 +27,10 @@ const makeWrapper = () => {
             },
         },
     });
-    const Wrapper = ({ children }: { children: ReactNode }) => (
+    const Wrapper = ({children}: { children: ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-    return { Wrapper, queryClient };
+    return {Wrapper, queryClient};
 };
 
 beforeEach(() => {
@@ -39,12 +39,12 @@ beforeEach(() => {
 
 describe('allEarthquakesQueryKey', () => {
     it('returns [earthquakes, all, filters]', () => {
-        const filters: EarthquakeFilters = { minMagnitude: 5 };
+        const filters: EarthquakeFilters = {minMagnitude: 5};
         expect(allEarthquakesQueryKey(filters)).toEqual(['earthquakes', 'all', filters]);
     });
 
     it('stable identity with frozen filters object', () => {
-        const filters: EarthquakeFilters = Object.freeze({ categories: ['SMALL'] });
+        const filters: EarthquakeFilters = Object.freeze({categories: ['SMALL']});
         const key1 = allEarthquakesQueryKey(filters);
         const key2 = allEarthquakesQueryKey(filters);
         expect(key1).toEqual(key2);
@@ -55,10 +55,10 @@ describe('useAllEarthquakes', () => {
     it('resolves to mocked Earthquake[]', async () => {
         mockGetAllEarthquakes.mockResolvedValueOnce(FIXTURE_EARTHQUAKES);
 
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(
+        const {Wrapper} = makeWrapper();
+        const {result} = renderHook(
             () => useAllEarthquakes({}),
-            { wrapper: Wrapper },
+            {wrapper: Wrapper},
         );
 
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -68,8 +68,8 @@ describe('useAllEarthquakes', () => {
     it('calls getAllEarthquakes with forwarded signal', async () => {
         mockGetAllEarthquakes.mockResolvedValueOnce([makeEarthquake()]);
 
-        const { Wrapper } = makeWrapper();
-        renderHook(() => useAllEarthquakes({}), { wrapper: Wrapper });
+        const {Wrapper} = makeWrapper();
+        renderHook(() => useAllEarthquakes({}), {wrapper: Wrapper});
 
         await waitFor(() => expect(mockGetAllEarthquakes).toHaveBeenCalledOnce());
 
@@ -84,10 +84,10 @@ describe('useAllEarthquakes', () => {
         });
         mockGetAllEarthquakes.mockReturnValueOnce(slowPromise);
 
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(
+        const {Wrapper} = makeWrapper();
+        const {result} = renderHook(
             () => useAllEarthquakes({}),
-            { wrapper: Wrapper },
+            {wrapper: Wrapper},
         );
 
         expect(result.current.isLoading).toBe(true);
@@ -98,10 +98,10 @@ describe('useAllEarthquakes', () => {
     it('error state when getAllEarthquakes rejects', async () => {
         mockGetAllEarthquakes.mockRejectedValueOnce(new Error('Network error'));
 
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(
+        const {Wrapper} = makeWrapper();
+        const {result} = renderHook(
             () => useAllEarthquakes({}),
-            { wrapper: Wrapper },
+            {wrapper: Wrapper},
         );
 
         await waitFor(() => expect(result.current.isError).toBe(true));

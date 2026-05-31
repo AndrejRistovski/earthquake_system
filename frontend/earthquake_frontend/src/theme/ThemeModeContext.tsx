@@ -5,9 +5,9 @@ import {
     useState,
     type ReactNode,
 } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import { createAppTheme, type ThemeMode } from './theme.ts';
-import { ThemeModeContext } from './themeModeContext.ts';
+import {ThemeProvider} from '@mui/material/styles';
+import {createAppTheme, type ThemeMode} from './theme';
+import {ThemeModeContext} from './themeModeContext';
 
 const STORAGE_KEY = 'seismic-theme-mode';
 
@@ -21,7 +21,7 @@ interface Props {
     children: ReactNode;
 }
 
-export const ThemeModeProvider = ({ children }: Props) => {
+export const ThemeModeProvider = ({children}: Props) => {
     const [mode, setMode] = useState<ThemeMode>(readStoredMode);
 
     useEffect(() => {
@@ -34,7 +34,7 @@ export const ThemeModeProvider = ({ children }: Props) => {
         setMode((current) => (current === 'dark' ? 'light' : 'dark'));
     }, []);
 
-    const value = useMemo(() => ({ mode, toggle }), [mode, toggle]);
+    const value = useMemo(() => ({mode, toggle}), [mode, toggle]);
 
     return (
         <ThemeModeContext.Provider value={value}>

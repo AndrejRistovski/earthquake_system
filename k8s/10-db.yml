@@ -1,0 +1,126 @@
+# PostgreSQL 16 as a StatefulSet: stable network identity (earthquake-postgres-0)
+# and a per-pod PVC via volumeClaimTemplates — guarantees a Deployment can't make.
+# Mirrors the compose `postgres` service (image, DB name, credentials, volume).
+---
+# Non-sensitive DB settings.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: earthquake-db-config
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: earthquake-system
+data:
+  POSTGRES_DB: earthquake_db
+  # Init Postgres into a sub-dir of the mounted volume, not the mount root, so the
+  # volume's lost+found / mountpoint never collides with initdb's empty-dir check.
+  PGDATA: /var/lib/postgresql/data/pgdata
+---
+# Credentials (dev defaults from the project's .env). stringData keeps them
+# human-readable in the manifest; Kubernetes stores them base64-encoded.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: earthquake-db-credentials
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: earthquake-system
+type: Opaque
+stringData:
+  POSTGRES_USER: admin
+  POSTGRES_PASSWORD: admin
+---
+# Headless Service (clusterIP: None) — the governing Service for the StatefulSet.
+# Gives the pod a stable DNS name (earthquake-db) that the backend connects to.
+apiVersion: v1
+kind: Service
+metadata:
+  name: earthquake-db
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: earthquake-system
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: earthquake-postgres
+    app.kubernetes.io/component: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: earthquake-postgres
+  namespace: earthquake
+  labels:
+    app.kubernetes.io/name: earthquake-postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: earthquake-system
+spec:
+  serviceName: earthquake-db          # must match the headless Service above
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: earthquake-postgres
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: earthquake-postgres
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: earthquake-system
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - name: postgres
+              containerPort: 5432
+          # POSTGRES_DB/PGDATA from the ConfigMap, POSTGRES_USER/PASSWORD from the Secret.
+          envFrom:
+            - configMapRef:
+                name: earthquake-db-config
+            - secretRef:
+                name: earthquake-db-credentials
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          # pg_isready confirms the server is actually accepting connections,
+          # not just that the port is open. sh -c so the env vars expand.
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -h 127.0.0.1"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -h 127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  # Per-pod PVC. local-path is K3s/K3D's built-in provisioner (Rancher Local Path).
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

@@ -1,4 +1,4 @@
-import type { Earthquake, PageResponse } from '../../api/types/earthquake.ts';
+import type {Earthquake, PageResponse} from '../../api/types/earthquake';
 
 let _nextId = 1;
 

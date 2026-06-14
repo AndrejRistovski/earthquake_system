@@ -80,9 +80,6 @@ export const Layout = () => {
                 <Typography variant="caption" color="text.secondary" sx={{display: 'block'}}>
                     Data source: USGS Earthquake Hazards Program
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{display: 'block'}}>
-                    Magnitude &gt; 1.0 · Last 24 hours
-                </Typography>
             </Box>
         </Box>
     );

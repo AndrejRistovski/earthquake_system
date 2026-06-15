@@ -86,8 +86,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: andrejristovskivip/earthquake-frontend:latest
-          imagePullPolicy: Always            # re-check Docker Hub for a new :latest on each pod (re)start
+          image: andrejristovskivip/earthquake-frontend:a974eb1ca006ead83ac60f12a9344ecfdd4ffff3
+          imagePullPolicy: Always # re-check Docker Hub for a new :latest on each pod (re)start
           ports:
             - name: http
               containerPort: 8080

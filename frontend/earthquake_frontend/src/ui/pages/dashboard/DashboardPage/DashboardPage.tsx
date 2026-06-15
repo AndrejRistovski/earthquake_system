@@ -94,7 +94,6 @@ export const DashboardPage = () => {
                 disabled={tableLoadingInitial}
             />
 
-            {/* Slim progress strip at the top of the data area for background refetches. */}
             <Box sx={{height: 4, mb: 0.5}}>
                 {isBackgroundFetching && !tableLoadingInitial && <LinearProgress/>}
             </Box>

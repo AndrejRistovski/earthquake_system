@@ -12,7 +12,6 @@ import java.util.Set;
 public final class EarthquakeSpecifications {
 
     private EarthquakeSpecifications() {
-        // utility class
     }
 
     public static Specification<Earthquake> timeBetween(Instant from, Instant to) {

@@ -50,8 +50,8 @@ spec:
           command: ["sh", "-c", "until nc -z earthquake-db 5432; do echo waiting for db; sleep 2; done"]
       containers:
         - name: backend
-          image: andrejristovskivip/earthquake-backend:latest
-          imagePullPolicy: Always            # re-check Docker Hub for a new :latest on each pod (re)start
+          image: andrejristovskivip/earthquake-backend:a974eb1ca006ead83ac60f12a9344ecfdd4ffff3
+          imagePullPolicy: Always # re-check Docker Hub for a new :latest on each pod (re)start
           ports:
             - name: http
               containerPort: 9090
@@ -76,7 +76,7 @@ spec:
             tcpSocket:
               port: 9090
             periodSeconds: 5
-            failureThreshold: 30            # up to ~150s to boot
+            failureThreshold: 30 # up to ~150s to boot
           readinessProbe:
             tcpSocket:
               port: 9090

@@ -1,0 +1,41 @@
+# Argo CD Application — the CD half of the pipeline.
+#
+# GitOps / pull model: Argo CD runs inside the cluster and reconciles the live
+# state against k8s/ in this repo. CI pins each image to its commit SHA and
+# commits it back to main; Argo CD detects the commit and rolls it out — no
+# inbound access from GitHub to the (local) cluster is required.
+#
+# Bootstrap:
+#   kubectl create namespace argocd
+#   kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#   kubectl apply -f argocd/application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: earthquake
+  namespace: argocd
+  # Let `argocd app delete` (or removing this Application) cascade to its resources.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AndrejRistovski/earthquake_system.git
+    targetRevision: main
+    path: k8s                      # all manifests in k8s/ (namespace, DB, app, ingress)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: earthquake          # where namespaced resources land
+  syncPolicy:
+    automated:
+      prune: true                  # delete objects removed from Git
+      selfHeal: true               # revert manual drift back to the Git state
+    syncOptions:
+      - CreateNamespace=true        # ensure the earthquake namespace exists
+      - ApplyOutOfSyncOnly=true     # only patch resources that actually drifted
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

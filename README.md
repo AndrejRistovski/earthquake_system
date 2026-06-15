@@ -6,7 +6,7 @@ stores them in PostgreSQL, and exposes a read-only REST API. The frontend is a R
 application that lists the events and plots them on an interactive map.
 
 The repository is a client/server monorepo with separate `backend/` and `frontend/` directories, and
-ships with Dockerfiles and a Docker Compose stack for running everything in containers.
+ships with Dockerfiles, a Docker Compose stack, Kubernetes manifests, and a GitHub Actions CI/CD pipeline.
 
 > **Note:** the HTTP API is **read-only**. Earthquake records are not created through the API — they are
 > pulled from the USGS feed on a schedule (see [Scheduled jobs](#scheduled-jobs)). There are no
@@ -209,11 +209,145 @@ The feed URL and minimum ingest magnitude are configured via `app.usgs.url` and 
 
 ---
 
-## Continuous Integration
+## Continuous Integration & Delivery
 
-Continuous integration runs on **GitHub Actions** (`.github/workflows/ci.yml`): it builds and tests both
-the backend and the frontend on push. *(Publishing a tagged image to a container registry is being added
-separately.)*
+CI runs on **GitHub Actions**. The pipeline is split per component so a change to one side doesn't
+rebuild the other (each workflow is path-filtered):
+
+- **`.github/workflows/backend-ci.yml`** — sets up JDK 21, runs `./mvnw clean verify` (unit +
+  integration tests via Testcontainers, JaCoCo coverage), validates the Compose file, then builds the
+  backend image.
+- **`.github/workflows/frontend-ci.yml`** — installs with `npm ci`, lints, runs Vitest + Playwright,
+  produces a production build, then builds the frontend image.
+
+On **push to `main`**, both workflows authenticate to Docker Hub and **push** the freshly built image;
+on pull requests the image is built but **not** pushed (validation only). Each image is tagged twice:
+
+| Image | Tags |
+|-------|------|
+| `andrejristovskivip/earthquake-backend`  | `latest`, `<git-sha>` |
+| `andrejristovskivip/earthquake-frontend` | `latest`, `<git-sha>` |
+
+Pushing requires two repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
+
+On push to `main`, each workflow then pins its image to the new commit SHA in the matching `k8s/`
+manifest and commits it back — the change Argo CD picks up to deploy. See
+[Continuous Delivery](#continuous-delivery-argo-cd).
+
+---
+
+## Kubernetes
+
+The `k8s/` directory runs the full stack on a Kubernetes cluster. Every object lives in a dedicated
+`earthquake` namespace and the files apply in numeric order (dependencies first):
+
+| File | Objects |
+|------|---------|
+| `00-namespace.yml` | `earthquake` **Namespace** |
+| `10-db.yml` | PostgreSQL **StatefulSet** with a `volumeClaimTemplates` per-pod PVC, a headless **Service** (`earthquake-db`), a **ConfigMap** (`POSTGRES_DB`, `PGDATA`) and a **Secret** (`POSTGRES_USER` / `POSTGRES_PASSWORD`) |
+| `20-backend.yml` | Backend **Deployment** (`andrejristovskivip/earthquake-backend:latest`), ClusterIP **Service** (`:9090`) and a **ConfigMap**. Datasource credentials are read from the DB Secret via `secretKeyRef`; an init container blocks startup until Postgres accepts TCP. |
+| `30-frontend.yml` | Frontend **Deployment** (`andrejristovskivip/earthquake-frontend:latest`), ClusterIP **Service** (`:8080`) and a **ConfigMap** that injects the runtime `nginx.conf` (the in-cluster build drops the Compose-only `/api` proxy — the Ingress routes `/api` directly). |
+| `40-ingress.yml` | A single **Ingress** (`earthquake.local`) routing `/api` → backend `:9090` and `/` → frontend `:8080`. |
+
+### Deploy to a local K3D cluster
+
+The manifests target K3D defaults (`traefik` ingress class, `local-path` storage class). Create a
+cluster with the load balancer mapped to host port 80, then apply everything:
+
+```bash
+# 1. Create a cluster that exposes Traefik on http://localhost
+k3d cluster create earthquake -p "80:80@loadbalancer"
+
+# 2. Apply all manifests (numeric order resolves dependencies)
+kubectl apply -f k8s/
+
+# 3. Wait for the app Deployments to roll out
+kubectl -n earthquake rollout status deploy/earthquake-backend
+kubectl -n earthquake rollout status deploy/earthquake-frontend
+```
+
+Then map the Ingress host locally and browse **http://earthquake.local**:
+
+- **Linux / macOS:** `echo "127.0.0.1 earthquake.local" | sudo tee -a /etc/hosts`
+- **Windows:** add `127.0.0.1 earthquake.local` to `C:\Windows\System32\drivers\etc\hosts`
+
+### Demonstration
+
+With the manifests applied, all objects come up healthy in the `earthquake` namespace:
+
+```text
+$ kubectl -n earthquake rollout status deploy/earthquake-backend
+deployment "earthquake-backend" successfully rolled out
+$ kubectl -n earthquake rollout status deploy/earthquake-frontend
+deployment "earthquake-frontend" successfully rolled out
+
+$ kubectl -n earthquake get pods,svc,pvc,ingress
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/earthquake-backend-86d4f59fcc-gt2gd    1/1     Running   0          7m30s
+pod/earthquake-frontend-57bfbdccf9-xk7th   1/1     Running   0          7m30s
+pod/earthquake-postgres-0                  1/1     Running   0          7m30s
+
+NAME                          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/earthquake-backend    ClusterIP   10.43.165.12    <none>        9090/TCP   7m30s
+service/earthquake-db         ClusterIP   None            <none>        5432/TCP   7m30s
+service/earthquake-frontend   ClusterIP   10.43.247.138   <none>        8080/TCP   7m30s
+
+NAME                                              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+persistentvolumeclaim/data-earthquake-postgres-0  Bound    pvc-a4d8c125-593d-4733-93d3-4f1c010ffa2d   1Gi        RWO            local-path     7m30s
+
+NAME                                   CLASS     HOSTS              ADDRESS                 PORTS   AGE
+ingress.../earthquake                  traefik   earthquake.local   172.20.0.3,172.20.0.4   80      7m30s
+```
+
+Screenshots of the live cluster are under [`docs/`](docs/).
+
+---
+
+## Continuous Delivery (Argo CD)
+
+Deployment uses a **pull-based GitOps** model with [Argo CD](https://argo-cd.readthedocs.io/).
+Argo CD runs *inside* the cluster and continuously reconciles the live state against the manifests in
+`k8s/`. Because the cluster pulls from GitHub (rather than CI pushing into the cluster), this works even
+though the K3D cluster is local and unreachable from GitHub-hosted runners.
+
+### The deploy loop
+
+```text
+git push ─▶ GitHub Actions ─▶ build image + push to Docker Hub (tag :<sha>)
+                              └▶ pin :<sha> into k8s/20-backend.yml (or 30-frontend.yml),
+                                 commit back to main
+                                                    │
+                  Argo CD (in-cluster) sees the new commit ◀┘
+                              └▶ syncs k8s/ → rolling update in the `earthquake` namespace
+```
+
+The image tag in Git changes on every push, so Argo CD always has a new desired state to apply — a bare
+`:latest` would never produce a diff and nothing would roll out.
+
+### One-time bootstrap
+
+```bash
+# 1. Install Argo CD into its own namespace
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl -n argocd rollout status deploy/argocd-server
+
+# 2. Register the app (auto-sync, self-heal, auto-create the earthquake namespace)
+kubectl apply -f argocd/application.yaml
+
+# 3. (optional) Open the Argo CD UI
+kubectl -n argocd port-forward svc/argocd-server 8081:443   # → https://localhost:8081
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d ; echo         # initial password (user: admin)
+```
+
+After that, every push to `main` deploys automatically. Watch a rollout with
+`kubectl -n earthquake rollout status deploy/earthquake-backend`, or follow it live in the Argo CD UI.
+
+> **Secrets:** `k8s/10-db.yml` ships the dev `admin`/`admin` Postgres credentials as a plaintext
+> `Secret` so the project runs out of the box. For anything beyond local/dev, keep secrets out of Git
+> with [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) or SOPS and let Argo CD decrypt
+> them at sync time.
 
 ---
 
@@ -221,7 +355,9 @@ separately.)*
 
 ```
 earthquake_system/
-├── .github/workflows/ci.yml          # GitHub Actions CI pipeline
+├── .github/workflows/
+│   ├── backend-ci.yml            # build + test + push backend image (Docker Hub)
+│   └── frontend-ci.yml           # build + test + push frontend image (Docker Hub)
 ├── backend/
 │   └── earthquake_backend/
 │       ├── Dockerfile                # multi-stage: temurin JDK build → JRE runtime
@@ -240,6 +376,15 @@ earthquake_system/
 │       ├── .dockerignore, .env.example
 │       ├── package.json
 │       └── src/                      # components, pages, API client
+├── k8s/                              # Kubernetes manifests (applied in numeric order)
+│   ├── 00-namespace.yml             # earthquake namespace
+│   ├── 10-db.yml                    # Postgres StatefulSet + headless Service + ConfigMap/Secret
+│   ├── 20-backend.yml               # backend Deployment + Service + ConfigMap
+│   ├── 30-frontend.yml              # frontend Deployment + Service + nginx ConfigMap
+│   └── 40-ingress.yml               # Ingress (earthquake.local)
+├── argocd/
+│   └── application.yaml              # Argo CD Application (GitOps CD → earthquake namespace)
+├── docs/                             # deployment screenshots / demo evidence
 └── README.md
 ```
 

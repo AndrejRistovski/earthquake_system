@@ -90,3 +90,53 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/earthquake-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # CD trigger: pin this commit's image into the manifest and commit it back to
+  # main. Argo CD (running in the cluster) detects the commit and rolls it out.
+  bump-manifest:
+    name: Pin image & let Argo CD deploy
+    needs: docker
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write              # push the image-tag bump back to main
+    # Shared group name serializes this with the frontend workflow's bump job so
+    # two concurrent pushes don't race on `git push`.
+    concurrency:
+      group: manifest-bump
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: .       # repo root, not backend/earthquake_backend
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Pin backend image to this commit
+        run: |
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/earthquake-backend:${{ github.sha }}"
+          # select() scopes the update to the Deployment doc only, leaving the
+          # ConfigMap/Service docs in the same file untouched.
+          yq -i "(select(.kind == \"Deployment\") | .spec.template.spec.containers[0].image) = \"$IMAGE\"" k8s/20-backend.yml
+
+      - name: Commit & push the bump (Argo CD syncs from here)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- k8s/20-backend.yml; then
+            echo "Backend image already pinned to ${GITHUB_SHA}; nothing to commit."
+            exit 0
+          fi
+          git add k8s/20-backend.yml
+          git commit -m "ci(cd): deploy backend ${GITHUB_SHA::7} [skip ci]"
+          git pull --rebase origin main
+          git push

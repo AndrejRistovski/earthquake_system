@@ -1,11 +1,3 @@
-# Single public entry point. K3D ships Traefik as the default ingress controller,
-# fronted by its built-in (klipper) LoadBalancer — reachable on the host once the
-# cluster is created with `-p "80:80@loadbalancer"`.
-#
-# Path routing (no rewrite — Traefik forwards the full path, which is what we want:
-# the backend serves under /api/earthquakes, so the /api prefix must be preserved):
-#   /api  -> earthquake-backend:9090
-#   /     -> earthquake-frontend:8080
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

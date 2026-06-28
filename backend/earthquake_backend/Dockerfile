@@ -4,13 +4,11 @@
 FROM eclipse-temurin:21-jdk-noble AS build
 WORKDIR /workspace
 
-# Maven wrapper + POM first → dependency layer is cached when only sources change.
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
 RUN chmod +x mvnw \
     && ./mvnw -B -ntp -q dependency:go-offline
 
-# Sources after deps → editing src/ doesn't bust the dependency cache.
 COPY src ./src
 RUN ./mvnw -B -ntp -DskipTests package \
     && cp target/*.jar app.jar
@@ -18,7 +16,6 @@ RUN ./mvnw -B -ntp -DskipTests package \
 # --- Runtime stage ---------------------------------------------------------
 FROM eclipse-temurin:21-jre-noble AS runtime
 
-# Non-root user
 RUN groupadd --system --gid 1001 spring \
     && useradd  --system --uid 1001 --gid spring --shell /usr/sbin/nologin --create-home spring
 

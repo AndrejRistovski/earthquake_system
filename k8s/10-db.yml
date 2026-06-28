@@ -1,8 +1,4 @@
-# PostgreSQL 16 as a StatefulSet: stable network identity (earthquake-postgres-0)
-# and a per-pod PVC via volumeClaimTemplates — guarantees a Deployment can't make.
-# Mirrors the compose `postgres` service (image, DB name, credentials, volume).
 ---
-# Non-sensitive DB settings.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,12 +10,8 @@ metadata:
     app.kubernetes.io/part-of: earthquake-system
 data:
   POSTGRES_DB: earthquake_db
-  # Init Postgres into a sub-dir of the mounted volume, not the mount root, so the
-  # volume's lost+found / mountpoint never collides with initdb's empty-dir check.
   PGDATA: /var/lib/postgresql/data/pgdata
 ---
-# Credentials (dev defaults from the project's .env). stringData keeps them
-# human-readable in the manifest; Kubernetes stores them base64-encoded.
 apiVersion: v1
 kind: Secret
 metadata:
@@ -34,8 +26,6 @@ stringData:
   POSTGRES_USER: admin
   POSTGRES_PASSWORD: admin
 ---
-# Headless Service (clusterIP: None) — the governing Service for the StatefulSet.
-# Gives the pod a stable DNS name (earthquake-db) that the backend connects to.
 apiVersion: v1
 kind: Service
 metadata:
@@ -65,7 +55,7 @@ metadata:
     app.kubernetes.io/component: database
     app.kubernetes.io/part-of: earthquake-system
 spec:
-  serviceName: earthquake-db          # must match the headless Service above
+  serviceName: earthquake-db
   replicas: 1
   selector:
     matchLabels:
@@ -84,7 +74,6 @@ spec:
           ports:
             - name: postgres
               containerPort: 5432
-          # POSTGRES_DB/PGDATA from the ConfigMap, POSTGRES_USER/PASSWORD from the Secret.
           envFrom:
             - configMapRef:
                 name: earthquake-db-config
@@ -93,8 +82,6 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-          # pg_isready confirms the server is actually accepting connections,
-          # not just that the port is open. sh -c so the env vars expand.
           readinessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -h 127.0.0.1"]
@@ -114,7 +101,6 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-  # Per-pod PVC. local-path is K3s/K3D's built-in provisioner (Rancher Local Path).
   volumeClaimTemplates:
     - metadata:
         name: data

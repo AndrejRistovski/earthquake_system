@@ -81,7 +81,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: andrejristovskivip/earthquake-frontend:9d72c1bf4aa548c594b036bb736c2e44d27108f7
+          image: andrejristovskivip/earthquake-frontend:1a897d551d8045d7b39f81b9da64027fe3cbeab9
           imagePullPolicy: Always # re-check Docker Hub for a new :latest on each pod (re)start
           ports:
             - name: http
